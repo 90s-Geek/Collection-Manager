@@ -412,7 +412,7 @@ function renderNameSearchResults(results, themeMap, query, totalCount) {
                 <strong>${escapeHTML(set.name)}</strong>
                 <span class="search-result-meta">${set.set_num} &nbsp;|&nbsp; ${set.year} &nbsp;|&nbsp; ${themeMap[set.theme_id] || 'Unknown'}</span>
                 ${presenceBadge(set.set_num)}
-                <a href="https://www.lego.com/en-us/service/building-instructions/find-building-instructions?query=${encodeURIComponent(baseNum)}" target="_blank" rel="noopener"
+                <a href="https://www.lego.com/en-us/service/building-instructions/find-building-instructions?query=${baseNum}" target="_blank" rel="noopener"
                    onclick="event.stopPropagation()"
                    style="color:#ffaa00;text-decoration:none;font-size:0.72em;letter-spacing:1px;display:inline-block;margin-top:3px;"
                    title="Find building instructions on LEGO.com">📋 instructions ↗</a>
@@ -476,7 +476,7 @@ function renderSearchResult(set) {
         </div>
         <p>Parts: ${set.num_parts}</p>
         <div style="margin:8px 0 12px;">
-            <a href="https://www.lego.com/en-us/service/building-instructions/find-building-instructions?query=${encodeURIComponent(set.set_num.replace(/-\d+$/, ''))}" target="_blank" rel="noopener"
+            <a href="https://www.lego.com/en-us/service/building-instructions/find-building-instructions?query=${set.set_num.replace(/-\d+$/, '')}" target="_blank" rel="noopener"
                style="color:#ffaa00;text-decoration:none;font-size:0.82em;letter-spacing:1px;border:1px solid #443300;padding:4px 10px;display:inline-block;"
                title="Find building instructions on LEGO.com">📋 BUILDING INSTRUCTIONS ↗</a>
         </div>
