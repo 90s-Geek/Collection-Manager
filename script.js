@@ -339,32 +339,42 @@ async function searchBySetNum(input, container) {
     }
 }
 
+// Cache of all Rebrickable themes, loaded once per session
+let allThemesCache = null;
+
+async function getAllThemes() {
+    if (allThemesCache) return allThemesCache;
+    // Fetch all themes across pages (Rebrickable has ~900 themes total)
+    let url = `https://rebrickable.com/api/v3/lego/themes/?page_size=500`;
+    let all = [];
+    while (url) {
+        const res = await fetch(url, { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } });
+        if (!res.ok) break;
+        const data = await res.json();
+        all = all.concat(data.results || []);
+        url = data.next || null;
+    }
+    allThemesCache = all;
+    return all;
+}
+
 async function searchByName(query, container) {
     try {
         const q = query.toLowerCase().trim();
+        const normalize = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-        // Fetch theme search and set name search in parallel
-        const [themeRes, setRes] = await Promise.all([
-            fetch(`https://rebrickable.com/api/v3/lego/themes/?search=${encodeURIComponent(query)}&page_size=50`, {
-                headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
-            }),
+        // Fetch all themes and set name search in parallel
+        const [allThemes, setRes] = await Promise.all([
+            getAllThemes(),
             fetch(`https://rebrickable.com/api/v3/lego/sets/?search=${encodeURIComponent(query)}&page_size=20&ordering=-year`, {
                 headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
             })
         ]);
 
-        let themeMatch = null;
-        if (themeRes.ok) {
-            const themeData = await themeRes.json();
-            const all = themeData.results || [];
-            console.log(`[theme search] query="${query}" results:`, all.map(t => `${t.name} (${t.id})`));
-            const normalize = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-            themeMatch = all.find(t => t.name.toLowerCase() === q)
-                      || all.find(t => normalize(t.name) === normalize(q));
-        }
+        const themeMatch = allThemes.find(t => t.name.toLowerCase() === q)
+                        || allThemes.find(t => normalize(t.name) === normalize(q));
 
         if (themeMatch) {
-            console.log(`[theme search] matched theme: ${themeMatch.name} (id=${themeMatch.id})`);
             await searchByThemeId(themeMatch.id, themeMatch.name, container);
             return;
         }
