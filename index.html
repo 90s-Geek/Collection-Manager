@@ -235,116 +235,6 @@
         .search-result-info strong { color: #fff; font-size: 0.9em; word-break: break-word; font-family: var(--sans); }
         .search-result-meta { font-family: var(--mono); color: var(--text-muted); font-size: 0.7em; }
 
-        /* ── Browse by Theme ─────────────────────────────── */
-        #theme-browse-section {
-            margin-bottom: 24px;
-            background: var(--surface);
-            border: 1px solid var(--border2);
-            border-radius: var(--radius);
-            overflow: hidden;
-        }
-        .theme-browse-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 16px;
-            border-bottom: 1px solid var(--border2);
-            cursor: pointer;
-            user-select: none;
-        }
-        .theme-browse-header:hover { background: rgba(0,255,136,0.03); }
-        .theme-browse-label {
-            font-family: var(--mono);
-            font-size: 0.72em;
-            font-weight: 700;
-            color: var(--green-dim);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        .theme-browse-toggle {
-            font-family: var(--mono);
-            font-size: 0.65em;
-            color: var(--text-muted);
-            transition: transform 0.2s;
-        }
-        #theme-browse-section.open .theme-browse-toggle { transform: rotate(180deg); }
-        .theme-browse-body {
-            display: none;
-            padding: 14px 16px;
-        }
-        #theme-browse-section.open .theme-browse-body { display: block; }
-
-        .theme-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 7px;
-            margin-bottom: 14px;
-        }
-        .theme-chip {
-            background: transparent;
-            border: 1px solid var(--border2);
-            color: var(--text-dim);
-            font-family: var(--mono);
-            font-size: 0.68em;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            padding: 5px 12px;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all var(--transition);
-            text-transform: uppercase;
-        }
-        .theme-chip:hover {
-            border-color: var(--green-dim);
-            color: var(--green);
-            background: rgba(0,255,136,0.06);
-        }
-        .theme-chip.active {
-            border-color: var(--green);
-            color: #000;
-            background: var(--green);
-            box-shadow: 0 0 10px rgba(0,255,136,0.3);
-        }
-        .theme-browse-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-        }
-        .theme-year-filter {
-            background: var(--surface2);
-            border: 1px solid var(--border2);
-            color: var(--text);
-            font-family: var(--mono);
-            font-size: 0.75em;
-            padding: 5px 10px;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            outline: none;
-        }
-        .theme-year-filter:focus { border-color: var(--green-dim); }
-        .theme-year-filter option { background: var(--surface2); }
-        .theme-sort-filter {
-            background: var(--surface2);
-            border: 1px solid var(--border2);
-            color: var(--text);
-            font-family: var(--mono);
-            font-size: 0.75em;
-            padding: 5px 10px;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            outline: none;
-        }
-        .theme-sort-filter:focus { border-color: var(--green-dim); }
-        .theme-sort-filter option { background: var(--surface2); }
-        #theme-browse-status {
-            font-family: var(--mono);
-            font-size: 0.7em;
-            color: var(--text-muted);
-            min-height: 1.4em;
-        }
-
         @media (max-width: 600px) {
             .sotd-body { flex-direction: column; }
             .sotd-img-panel { width: 100%; border-right: none; border-bottom: 1px solid var(--border); border-radius: 0; }
@@ -352,7 +242,6 @@
             input { width: 100%; }
             button[type="submit"] { width: 100%; }
             .search-box form { flex-direction: column; }
-            .theme-chips { gap: 5px; }
         }
     </style>
 </head>
@@ -379,32 +268,9 @@
 
     <div class="search-box">
         <form onsubmit="event.preventDefault(); searchLego();">
-            <input type="text" id="set-input" placeholder="Set # or name (e.g. 6080, Castle)">
+            <input type="text" id="set-input" placeholder="Set #, name, or theme (e.g. 6080, Castle, Star Wars)">
             <button type="submit">SEARCH</button>
         </form>
-    </div>
-
-    <!-- Browse by Theme -->
-    <div id="theme-browse-section">
-        <div class="theme-browse-header" onclick="toggleThemeBrowse()" aria-expanded="false" role="button" tabindex="0">
-            <span class="theme-browse-label">⊞ Browse by Theme</span>
-            <span class="theme-browse-toggle">▼</span>
-        </div>
-        <div class="theme-browse-body">
-            <div class="theme-chips" id="theme-chips"></div>
-            <div class="theme-browse-controls">
-                <select class="theme-year-filter" id="theme-year-select" onchange="onThemeControlChange()">
-                    <option value="">All Years</option>
-                </select>
-                <select class="theme-sort-filter" id="theme-sort-select" onchange="onThemeControlChange()">
-                    <option value="-year">Newest First</option>
-                    <option value="year">Oldest First</option>
-                    <option value="name">Name A–Z</option>
-                    <option value="-num_parts">Most Parts</option>
-                </select>
-                <span id="theme-browse-status"></span>
-            </div>
-        </div>
     </div>
 
     <!-- Set of the Day -->

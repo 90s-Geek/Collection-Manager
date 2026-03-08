@@ -341,6 +341,22 @@ async function searchBySetNum(input, container) {
 
 async function searchByName(query, container) {
     try {
+        // First, check if the query exactly matches a theme name
+        const themeRes = await fetch(`https://rebrickable.com/api/v3/lego/themes/?search=${encodeURIComponent(query)}&page_size=10`, {
+            headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
+        });
+        if (themeRes.ok) {
+            const themeData = await themeRes.json();
+            const exactMatch = (themeData.results || []).find(t =>
+                t.name.toLowerCase() === query.toLowerCase()
+            );
+            if (exactMatch) {
+                await searchByThemeId(exactMatch.id, exactMatch.name, container);
+                return;
+            }
+        }
+
+        // Fall back to set name search
         const res = await fetch(`https://rebrickable.com/api/v3/lego/sets/?search=${encodeURIComponent(query)}&page_size=20&ordering=-year`, {
             headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
         });
@@ -367,175 +383,28 @@ async function searchByName(query, container) {
     }
 }
 
-// --- Browse by Theme ---
-const LEGO_THEMES = [
-    { name: 'Castle',        id: 186 },
-    { name: 'Space',         id: 349 },
-    { name: 'City',          id: 52  },
-    { name: 'Star Wars',     id: 158 },
-    { name: 'Technic',       id: 1   },
-    { name: 'Creator',       id: 22  },
-    { name: 'Harry Potter',  id: 246 },
-    { name: 'Pirates',       id: 159 },
-    { name: 'Ninjago',       id: 435 },
-    { name: 'Trains',        id: 116 },
-    { name: 'Speed Champions', id: 602 },
-    { name: 'Ideas',         id: 408 },
-    { name: 'Architecture',  id: 252 },
-    { name: 'Marvel',        id: 231 },
-    { name: 'DC Comics',     id: 635 },
-];
+async function searchByThemeId(themeId, themeName, container) {
+    searchQuery      = themeName;
+    searchNextUrl    = null;
+    searchAllResults = [];
 
-let activeThemeId   = null;
-let activeThemeName = '';
-let themeNextUrl    = null;
-let themeAllResults = [];
+    const url = `https://rebrickable.com/api/v3/lego/sets/?theme_id=${themeId}&page_size=20&ordering=-year`;
+    const res = await fetch(url, { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } });
+    if (!res.ok) throw new Error("Theme search failed.");
+    const data = await res.json();
 
-function initThemeBrowse() {
-    const chips = document.getElementById('theme-chips');
-    if (!chips) return;
-    chips.innerHTML = LEGO_THEMES.map(t =>
-        `<button class="theme-chip" data-id="${t.id}" onclick="selectThemeChip(${t.id}, '${t.name}', this)">${t.name}</button>`
-    ).join('');
+    searchNextUrl    = data.next || null;
+    searchAllResults = data.results || [];
 
-    // Populate year dropdown
-    const yearSel = document.getElementById('theme-year-select');
-    if (yearSel) {
-        const currentYear = new Date().getFullYear();
-        for (let y = currentYear; y >= 1950; y--) {
-            const opt = document.createElement('option');
-            opt.value = y;
-            opt.textContent = y;
-            yearSel.appendChild(opt);
-        }
-    }
-}
+    const themeIds = [...new Set(searchAllResults.map(s => s.theme_id))];
+    await Promise.all(themeIds.map(id => fetchTheme(id)));
 
-function toggleThemeBrowse() {
-    const section = document.getElementById('theme-browse-section');
-    if (!section) return;
-    const isOpen = section.classList.toggle('open');
-    section.querySelector('.theme-browse-header').setAttribute('aria-expanded', String(isOpen));
-    if (isOpen && !document.getElementById('theme-chips').children.length) {
-        initThemeBrowse();
-    }
-}
-
-function selectThemeChip(themeId, themeName, el) {
-    // Toggle off if already active
-    if (activeThemeId === themeId) {
-        activeThemeId = null;
-        activeThemeName = '';
-        el.classList.remove('active');
-        document.getElementById('result-container').style.display = 'none';
-        document.getElementById('theme-browse-status').textContent = '';
+    if (!searchAllResults.length) {
+        container.innerHTML = `<p style="color:#ff6666;">No sets found for theme "<strong>${escapeHTML(themeName)}</strong>".</p>`;
         return;
     }
-    // Deactivate all chips
-    document.querySelectorAll('.theme-chip').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
-    activeThemeId   = themeId;
-    activeThemeName = themeName;
-    themeAllResults = [];
-    themeNextUrl    = null;
-    searchByTheme();
-}
 
-function onThemeControlChange() {
-    if (!activeThemeId) return;
-    themeAllResults = [];
-    themeNextUrl    = null;
-    searchByTheme();
-}
-
-async function searchByTheme() {
-    if (!activeThemeId) return;
-    const container = document.getElementById('result-container');
-    container.style.display = 'block';
-    container.innerHTML = '<p>Loading theme sets...</p>';
-    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    const year    = document.getElementById('theme-year-select')?.value || '';
-    const ordering = document.getElementById('theme-sort-select')?.value || '-year';
-
-    let url = `https://rebrickable.com/api/v3/lego/sets/?theme_id=${activeThemeId}&page_size=20&ordering=${ordering}`;
-    if (year) url += `&min_year=${year}&max_year=${year}`;
-
-    const statusEl = document.getElementById('theme-browse-status');
-    if (statusEl) statusEl.textContent = 'LOADING...';
-
-    try {
-        const res = await fetch(url, { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } });
-        if (!res.ok) throw new Error('Theme search failed.');
-        const data = await res.json();
-
-        themeNextUrl    = data.next || null;
-        themeAllResults = data.results || [];
-
-        const themeIds = [...new Set(themeAllResults.map(s => s.theme_id))];
-        await Promise.all(themeIds.map(id => fetchTheme(id)));
-
-        if (statusEl) statusEl.textContent = '';
-        renderThemeResults(themeAllResults, data.count, activeThemeName);
-    } catch (err) {
-        container.innerHTML = `<p style="color:red;">${err.message}</p>`;
-        if (statusEl) statusEl.textContent = '';
-    }
-}
-
-async function loadMoreThemeResults() {
-    if (!themeNextUrl) return;
-    const btn = document.getElementById('load-more-btn');
-    if (btn) { btn.textContent = '⟳ LOADING...'; btn.disabled = true; }
-    try {
-        const res = await fetch(themeNextUrl, { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } });
-        if (!res.ok) throw new Error('Load more failed.');
-        const data = await res.json();
-        themeNextUrl = data.next || null;
-        themeAllResults = [...themeAllResults, ...data.results];
-
-        const themeIds = [...new Set(data.results.map(s => s.theme_id))];
-        await Promise.all(themeIds.map(id => fetchTheme(id)));
-
-        const container = document.getElementById('result-container');
-        const scrollEl  = container.querySelector('.search-results-list');
-        const scrollTop = scrollEl ? scrollEl.scrollTop : 0;
-        renderThemeResults(themeAllResults, null, activeThemeName);
-        const newScrollEl = container.querySelector('.search-results-list');
-        if (newScrollEl) newScrollEl.scrollTop = scrollTop;
-    } catch (err) {
-        if (btn) { btn.textContent = 'LOAD MORE'; btn.disabled = false; }
-        showToast('Could not load more results.', 'error');
-    }
-}
-
-let _themeTotalCount = 0;
-function renderThemeResults(results, totalCount, themeName) {
-    if (totalCount !== null) _themeTotalCount = totalCount;
-    const container = document.getElementById('result-container');
-    const rows = results.map(set => `
-        <li class="search-result-item" onclick="selectSearchResult('${set.set_num}', ${set.theme_id})">
-            <img src="${set.set_img_url || ''}" alt="${escapeHTML(set.name)}" width="50" style="border:1px solid #333; flex-shrink:0; background:#fff;">
-            <div class="search-result-info">
-                <strong>${escapeHTML(set.name)}</strong>
-                <span class="search-result-meta">${set.set_num} &nbsp;|&nbsp; ${set.year} &nbsp;|&nbsp; ${themeCache[set.theme_id] || themeName}</span>
-                ${presenceBadge(set.set_num)}
-            </div>
-        </li>
-    `).join('');
-
-    const loadMoreBtn = themeNextUrl
-        ? `<button id="load-more-btn" onclick="loadMoreThemeResults()" class="load-more-btn">⬇ LOAD MORE RESULTS</button>`
-        : '';
-
-    container.innerHTML = `
-        <div style="text-align:left; margin-bottom:10px; font-size:0.8em; color:#888;">
-            > <span style="color:#00ffff;">${escapeHTML(themeName)}</span> — ${_themeTotalCount} set${_themeTotalCount !== 1 ? 's' : ''}
-            &nbsp;<span style="color:#555;">(showing ${results.length})</span>
-        </div>
-        <ul class="search-results-list">${rows}</ul>
-        ${loadMoreBtn}
-    `;
+    renderNameSearchResults(searchAllResults, themeCache, `Theme: ${themeName}`, data.count);
 }
 
 async function loadMoreSearchResults() {
