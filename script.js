@@ -7,7 +7,6 @@ document.querySelectorAll('.nav a').forEach(a => {
 
 // --- CONFIGURATION ---
 const REBRICKABLE_API_KEY = '05a143eb0b36a4439e8118910912d050';
-const BRICKSET_API_KEY    = '3-lNuI-wkoZ-HDgqP';
 const SUPABASE_URL = 'https://sgmibyooymrocvojchxu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnbWlieW9veW1yb2N2b2pjaHh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1Mzk0OTYsImV4cCI6MjA4NzExNTQ5Nn0.nLXsVr6mvsCQJijHsO2wkw49e0J4JZ-2oiLTpKZGmu0';
 
@@ -226,20 +225,18 @@ function restoreFilterState() {
 // Avoids redundant Rebrickable API calls for themes already fetched this session
 const themeCache = {};
 
-// --- Fetch Retail Price from Brickset ---
-// Returns the USD retail price for a set_num, or null if unavailable.
-// Caches results per session to avoid repeat API calls.
+// --- Fetch Retail Price via Netlify proxy ---
+// Brickset's API blocks direct browser fetch() calls (no CORS headers).
+// The Netlify function at /.netlify/functions/brickset proxies the call
+// server-side and returns the price fields we need with proper CORS headers.
 async function fetchRetailPrice(setNum) {
     if (setNum in retailPriceCache) return retailPriceCache[setNum];
     try {
-        const num = setNum.replace(/-\d+$/, '');
-        const url = `https://brickset.com/api/v3.asmx/getSets?apiKey=${BRICKSET_API_KEY}&userHash=&params=${encodeURIComponent(JSON.stringify({setNumber: num, pageSize: 1}))}`;
+        const url = `/.netlify/functions/brickset?setNumber=${encodeURIComponent(setNum)}`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error('Brickset API error');
+        if (!res.ok) throw new Error(`Proxy error ${res.status}`);
         const data = await res.json();
-        const sets = data.sets || [];
-        if (!sets.length) { retailPriceCache[setNum] = null; return null; }
-        const price = sets[0]?.LEGOCom?.US?.retailPrice ?? null;
+        const price = data.result?.retailPrice ?? null;
         retailPriceCache[setNum] = price ? Number(price) : null;
     } catch {
         retailPriceCache[setNum] = null;

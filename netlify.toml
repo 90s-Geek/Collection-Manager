@@ -1,0 +1,10 @@
+# netlify.toml
+# Place this in the ROOT of your repository.
+# If you already have a netlify.toml, just merge the [functions] block in.
+
+[functions]
+  directory = "netlify/functions"
+
+# Optional: if your site files aren't in root, set publish dir here
+# [build]
+#   publish = "."
