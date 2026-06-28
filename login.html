@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>90s Geek — Access Required</title>
+    <link rel="icon" type="image/webp" href="90s_Geek_logo.webp">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green:      #00ff88;
+            --green-dim:  #00cc6a;
+            --green-glow: rgba(0, 255, 136, 0.18);
+            --cyan:       #00e5ff;
+            --red:        #ff4466;
+            --bg:         #090d09;
+            --surface:    #101610;
+            --surface2:   #151d15;
+            --border:     #1e2b1e;
+            --border2:    #243022;
+            --text:       #cce8d0;
+            --text-dim:   #6b8a72;
+            --text-muted: #3d5442;
+            --mono:       'JetBrains Mono', 'Courier New', monospace;
+            --sans:       'Space Grotesk', sans-serif;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            background-color: var(--bg);
+            background-image:
+                linear-gradient(rgba(0, 255, 136, 0.022) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 136, 0.022) 1px, transparent 1px),
+                radial-gradient(ellipse at 50% 0%, rgba(0, 255, 136, 0.05) 0%, transparent 55%),
+                linear-gradient(160deg, #060d06 0%, #0a120a 50%, #080e08 100%);
+            background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%;
+            background-attachment: fixed;
+            color: var(--text);
+            font-family: var(--sans);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(0,0,0,0.45) 100%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .login-wrap {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .logo-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo-area img {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            border: 2px solid var(--green-dim);
+            box-shadow: 0 0 24px var(--green-glow);
+        }
+
+        .logo-area h1 {
+            font-family: var(--mono);
+            color: var(--green);
+            font-size: 1.1em;
+            font-weight: 700;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .logo-area p {
+            font-family: var(--mono);
+            color: var(--text-dim);
+            font-size: 0.75em;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .terminal-box {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0, 255, 136, 0.06), 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        .terminal-bar {
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dot-red    { background: #ff5f57; }
+        .dot-yellow { background: #febc2e; }
+        .dot-green  { background: #28c840; }
+
+        .terminal-title {
+            font-family: var(--mono);
+            font-size: 0.7em;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-left: 6px;
+        }
+
+        .terminal-body {
+            padding: 28px 28px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .prompt-line {
+            font-family: var(--mono);
+            font-size: 0.78em;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+        }
+
+        .prompt-line span {
+            color: var(--green);
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-family: var(--mono);
+            font-size: 0.7em;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .input-group input {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 6px;
+            padding: 12px 14px;
+            color: var(--green);
+            font-family: var(--mono);
+            font-size: 0.95em;
+            letter-spacing: 3px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input-group input:focus {
+            border-color: var(--green-dim);
+            box-shadow: 0 0 0 3px var(--green-glow);
+        }
+
+        .input-group input::placeholder {
+            color: var(--text-muted);
+            letter-spacing: 2px;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 13px;
+            background: transparent;
+            border: 1px solid var(--green-dim);
+            border-radius: 6px;
+            color: var(--green);
+            font-family: var(--mono);
+            font-size: 0.85em;
+            font-weight: 600;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s;
+            margin-top: 4px;
+        }
+
+        .btn-login:hover {
+            background: var(--green-glow);
+            box-shadow: 0 0 16px var(--green-glow);
+        }
+
+        .btn-login:active {
+            transform: scale(0.98);
+        }
+
+        .error-msg {
+            font-family: var(--mono);
+            font-size: 0.75em;
+            color: var(--red);
+            letter-spacing: 1px;
+            text-align: center;
+            min-height: 1.2em;
+            display: none;
+        }
+
+        .error-msg.visible {
+            display: block;
+            animation: flicker 0.3s ease;
+        }
+
+        @keyframes flicker {
+            0%   { opacity: 0; }
+            50%  { opacity: 1; }
+            75%  { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 1em;
+            background: var(--green);
+            vertical-align: text-bottom;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-wrap">
+    <div class="logo-area">
+        <img src="90s_Geek_logo.webp" alt="90s Geek Logo">
+        <h1>90s Geek</h1>
+        <p>Collection Manager</p>
+    </div>
+
+    <div class="terminal-box">
+        <div class="terminal-bar">
+            <div class="dot dot-red"></div>
+            <div class="dot dot-yellow"></div>
+            <div class="dot dot-green"></div>
+            <span class="terminal-title">auth_required.sh</span>
+        </div>
+        <div class="terminal-body">
+            <div class="prompt-line">
+                <span>$</span> ./authenticate --user restricted_area <span class="cursor"></span>
+            </div>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="password-input" placeholder="••••••••" autofocus>
+            </div>
+            <div class="error-msg" id="error-msg">⚠ Access denied — incorrect password</div>
+            <button class="btn-login" id="login-btn">[ Enter ]</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // -------------------------------------------------------
+    // Simple client-side password gate.
+    // Change the password below to whatever you want.
+    // This is security-by-obscurity — fine for a personal
+    // portfolio site, not for protecting sensitive data.
+    // -------------------------------------------------------
+    const PASSWORD = 'lego1990';  // <-- change this
+
+    const SESSION_KEY = '90sgeek_auth';
+
+    // If already authenticated this session, skip login
+    if (sessionStorage.getItem(SESSION_KEY) === 'true') {
+        window.location.replace('index.html');
+    }
+
+    const input  = document.getElementById('password-input');
+    const btn    = document.getElementById('login-btn');
+    const errMsg = document.getElementById('error-msg');
+
+    function attemptLogin() {
+        const val = input.value.trim();
+        if (val === PASSWORD) {
+            sessionStorage.setItem(SESSION_KEY, 'true');
+            window.location.replace('index.html');
+        } else {
+            errMsg.classList.remove('visible');
+            void errMsg.offsetWidth; // force reflow to re-trigger animation
+            errMsg.classList.add('visible');
+            input.value = '';
+            input.focus();
+        }
+    }
+
+    btn.addEventListener('click', attemptLogin);
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') attemptLogin();
+    });
+</script>
+
+</body>
+</html>
