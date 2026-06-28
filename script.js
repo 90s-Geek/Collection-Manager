@@ -225,11 +225,14 @@ function restoreFilterState() {
 // Avoids redundant Rebrickable API calls for themes already fetched this session
 const themeCache = {};
 
-// --- Fetch Retail Price via Vercel proxy ---
+// --- Fetch Retail Price via Netlify proxy ---
+// Brickset's API blocks direct browser fetch() calls (no CORS headers).
+// The Netlify function at /.netlify/functions/brickset proxies the call
+// server-side and returns the price fields we need with proper CORS headers.
 async function fetchRetailPrice(setNum) {
     if (setNum in retailPriceCache) return retailPriceCache[setNum];
     try {
-        const url = `/api/brickset?setNumber=${encodeURIComponent(setNum)}`;
+        const url = `/.netlify/functions/brickset?setNumber=${encodeURIComponent(setNum)}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Proxy error ${res.status}`);
         const data = await res.json();
@@ -1370,11 +1373,20 @@ function getCurrentFilteredCollection() {
     });
 }
 
-function bulkExportSelected() {
+async function bulkExportSelected() {
     const items = collectionCache.filter(i => bulkSelected.has(i.id));
     if (!items.length) return showToast('No sets selected.', 'warning');
-    const headers = ['set_num', 'name', 'theme', 'year', 'condition', 'img_url'];
-    const rows = items.map(item => headers.map(h => `"${(item[h] || '').toString().replace(/"/g, '""')}"`).join(','));
+    showToast("Fetching retail prices… this may take a moment.", 'info');
+    await prefetchRetailPrices(items.map(i => i.set_num));
+    const headers = ['set_num', 'name', 'theme', 'year', 'condition', 'price_paid', 'retail_price', 'img_url'];
+    const rows = items.map(item => {
+        const retail = retailPriceCache[item.set_num] ?? '';
+        return [
+            ...['set_num', 'name', 'theme', 'year', 'condition', 'price_paid'].map(h => `"${(item[h] != null ? item[h] : '').toString().replace(/"/g, '""')}"`),
+            `"${retail}"`,
+            `"${(item.img_url || '').replace(/"/g, '""')}"`
+        ].join(',');
+    });
     const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -2175,12 +2187,20 @@ async function sotdSaveToWantlist(setNum, themeId) {
     } catch { showToast('Could not save set.', 'error'); }
 }
 
-function exportCollection() {
-    // Use in-memory cache — no need for a redundant round-trip to Supabase
+async function exportCollection() {
     if (!collectionCache.length) return showToast("No data to export.", 'warning');
+    showToast("Fetching retail prices… this may take a moment.", 'info');
+    await prefetchRetailPrices(collectionCache.map(i => i.set_num));
     const sorted = [...collectionCache].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    const headers = ['set_num', 'name', 'theme', 'year', 'condition', 'price_paid', 'img_url'];
-    const rows = sorted.map(item => headers.map(h => `"${(item[h] != null ? item[h] : '').toString().replace(/"/g, '""')}"`).join(','));
+    const headers = ['set_num', 'name', 'theme', 'year', 'condition', 'price_paid', 'retail_price', 'img_url'];
+    const rows = sorted.map(item => {
+        const retail = retailPriceCache[item.set_num] ?? '';
+        return [
+            ...['set_num', 'name', 'theme', 'year', 'condition', 'price_paid'].map(h => `"${(item[h] != null ? item[h] : '').toString().replace(/"/g, '""')}"`),
+            `"${retail}"`,
+            `"${(item.img_url || '').replace(/"/g, '""')}"`
+        ].join(',');
+    });
     const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -2189,4 +2209,5 @@ function exportCollection() {
     a.download = 'lego_collection.csv';
     a.click();
     URL.revokeObjectURL(url);
+    showToast("Export complete!", 'success');
 }
