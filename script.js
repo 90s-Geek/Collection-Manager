@@ -1866,6 +1866,37 @@ function parseCSV(text) {
     }).filter(row => row.set_num); // Skip blank rows
 }
 
+// --- Import mode: 'add' (insert new only) or 'sync' (upsert all) ---
+let importMode = 'add';
+
+function setImportMode(mode) {
+    importMode = mode;
+    const addBtn  = document.getElementById('mode-add');
+    const syncBtn = document.getElementById('mode-sync');
+    const hint    = document.getElementById('import-mode-hint');
+    if (!addBtn || !syncBtn) return;
+
+    if (mode === 'add') {
+        addBtn.style.background  = '#00ff0022';
+        addBtn.style.color       = '#00ff88';
+        syncBtn.style.background = '#111';
+        syncBtn.style.color      = '#555';
+        if (hint) hint.textContent = 'Add new sets only — existing records are skipped.';
+    } else {
+        syncBtn.style.background = '#00e5ff22';
+        syncBtn.style.color      = '#00e5ff';
+        addBtn.style.background  = '#111';
+        addBtn.style.color       = '#555';
+        if (hint) hint.textContent = 'Update existing sets AND add new ones. name, theme, year, condition, price_paid, img_url will be overwritten.';
+    }
+
+    // Re-run preview if a file was already selected
+    const fileInput = document.getElementById('csv-file-input');
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+        handleCSVFile({ target: fileInput });
+    }
+}
+
 async function handleCSVFile(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -1883,43 +1914,56 @@ async function handleCSVFile(event) {
 
     preview.innerHTML = `<p style="color:#888;">⟳ Checking ${rows.length} set${rows.length !== 1 ? 's' : ''} against your collection...</p>`;
 
-    // Fetch existing set_nums from collection to detect duplicates
+    // Fetch existing set_nums from collection
     const { data: existing } = await db.from('lego_collection').select('set_num');
     const existingNums = new Set((existing || []).map(r => r.set_num));
 
     // Normalise set_num (add -1 suffix if missing)
     const normalise = s => /^\d+$/.test(s.trim()) ? `${s.trim()}-1` : s.trim();
+    const normRows = rows.map(r => ({ ...r, set_num: normalise(r.set_num) }));
 
-    const toImport = rows.map(r => ({ ...r, set_num: normalise(r.set_num) }))
-                         .filter(r => !existingNums.has(r.set_num));
-    const skipped  = rows.length - toImport.length;
+    const toUpdate = importMode === 'sync' ? normRows.filter(r => existingNums.has(r.set_num))  : [];
+    const toInsert = normRows.filter(r => !existingNums.has(r.set_num));
+    const skipped  = importMode === 'add' ? normRows.length - toInsert.length : 0;
 
-    if (toImport.length === 0) {
-        preview.innerHTML = `<p style="color:#ffaa00;">All ${rows.length} sets are already in your collection. Nothing to import.</p>`;
+    const totalOps = toUpdate.length + toInsert.length;
+
+    if (totalOps === 0) {
+        if (importMode === 'add') {
+            preview.innerHTML = `<p style="color:#ffaa00;">All ${rows.length} sets are already in your collection. Nothing to import.</p>`;
+        } else {
+            preview.innerHTML = `<p style="color:#ffaa00;">No matching sets found in your collection, and no new sets to add.</p>`;
+        }
         return;
     }
+
+    const previewLines = [
+        ...toUpdate.map(r => `<div style="color:#00e5ff;margin-bottom:2px;">⟳ ${r.set_num}${r.name ? ' — ' + r.name : ''}</div>`),
+        ...toInsert.map(r => `<div style="color:#00ff00;margin-bottom:2px;">+ ${r.set_num}${r.name ? ' — ' + r.name : ''}</div>`)
+    ];
 
     preview.innerHTML = `
         <div style="border:1px solid #333;padding:12px;margin-top:10px;text-align:left;font-size:0.8em;max-height:200px;overflow-y:auto;">
             <div style="color:#888;margin-bottom:8px;">
-                Ready to import <span style="color:#00ffff;">${toImport.length}</span> set${toImport.length !== 1 ? 's' : ''}
-                ${skipped ? `<span style="color:#ffaa00;"> (${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped)</span>` : ''}
+                ${toUpdate.length ? `<span style="color:#00e5ff;">⟳ ${toUpdate.length} to update</span>&nbsp;&nbsp;` : ''}
+                ${toInsert.length ? `<span style="color:#00ff00;">＋ ${toInsert.length} to add</span>&nbsp;&nbsp;` : ''}
+                ${skipped ? `<span style="color:#ffaa00;">${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped</span>` : ''}
             </div>
-            ${toImport.map(r => `<div style="color:#00ff00;margin-bottom:2px;">+ ${r.set_num}${r.name ? ' — ' + r.name : ''}</div>`).join('')}
+            ${previewLines.join('')}
         </div>
         <button id="confirm-import-btn" onclick="confirmImport()" style="width:100%;margin-top:10px;background:#00ff00;color:#000;padding:10px;font-family:'Courier New',monospace;font-weight:bold;border:none;cursor:pointer;">
-            ↑ IMPORT ${toImport.length} SET${toImport.length !== 1 ? 'S' : ''}
+            ↑ ${importMode === 'sync' ? 'SYNC' : 'IMPORT'} ${totalOps} SET${totalOps !== 1 ? 'S' : ''}
         </button>
     `;
 
-    // Store pending rows on button for confirmImport to access
-    document.getElementById('confirm-import-btn').dataset.pending = JSON.stringify(toImport);
+    document.getElementById('confirm-import-btn').dataset.pending = JSON.stringify({ toInsert, toUpdate, mode: importMode });
 }
 
 async function confirmImport() {
     const btn = document.getElementById('confirm-import-btn');
-    const toImport = JSON.parse(btn.dataset.pending || '[]');
-    if (!toImport.length) return;
+    const { toInsert = [], toUpdate = [], mode } = JSON.parse(btn.dataset.pending || '{}');
+    const allOps = [...toUpdate, ...toInsert];
+    if (!allOps.length) return;
 
     const preview = document.getElementById('import-preview');
     btn.disabled = true;
@@ -1930,20 +1974,23 @@ async function confirmImport() {
     if (modal) modal.dataset.importing = 'true';
     if (closeBtn) closeBtn.disabled = true;
 
-    let imported = 0;
+    let updated = 0;
+    let inserted = 0;
     let failed = 0;
     const failedSets = [];
 
     const updateProgress = (currentSet = '') => {
+        const done = updated + inserted + failed;
         preview.innerHTML = `
             <div style="border:1px solid #333;padding:15px;margin-top:10px;text-align:left;font-size:0.85em;">
-                <div style="color:#888;margin-bottom:10px;">IMPORTING...</div>
+                <div style="color:#888;margin-bottom:10px;">${mode === 'sync' ? 'SYNCING' : 'IMPORTING'}...</div>
                 <div style="background:#111;border:1px solid #333;height:12px;margin-bottom:10px;box-sizing:border-box;">
-                    <div style="background:#00ff00;height:100%;width:${Math.round(((imported + failed) / toImport.length) * 100)}%;transition:width 0.2s;"></div>
+                    <div style="background:#00ff00;height:100%;width:${Math.round((done / allOps.length) * 100)}%;transition:width 0.2s;"></div>
                 </div>
-                <div style="color:#00ffff;margin-bottom:4px;">${imported + failed} / ${toImport.length} processed</div>
-                <div style="color:#00ff00;">✓ ${imported} added</div>
-                ${failed ? `<div style="color:#ff6666;">✗ ${failed} failed</div>` : ''}
+                <div style="color:#00ffff;margin-bottom:4px;">${done} / ${allOps.length} processed</div>
+                ${updated  ? `<div style="color:#00e5ff;">⟳ ${updated} updated</div>`  : ''}
+                ${inserted ? `<div style="color:#00ff00;">✓ ${inserted} added</div>`   : ''}
+                ${failed   ? `<div style="color:#ff6666;">✗ ${failed} failed</div>`    : ''}
                 ${currentSet ? `<div style="color:#555;margin-top:8px;font-size:0.8em;">⟳ ${currentSet}</div>` : ''}
             </div>
         `;
@@ -1951,42 +1998,60 @@ async function confirmImport() {
 
     updateProgress();
 
-    for (const row of toImport) {
+    const validConditions = CONDITIONS.map(c => c.value);
+
+    // Helper: enrich a row with Rebrickable data if fields are missing
+    async function enrichRow(row) {
+        let { set_num, name, theme, year, condition, price_paid, img_url } = row;
+        img_url = img_url || null;
+        if (!name || !theme || !year || !img_url) {
+            const res = await fetch(`https://rebrickable.com/api/v3/lego/sets/${set_num}/`, {
+                headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
+            });
+            if (!res.ok) throw new Error('Not found on Rebrickable');
+            const data = await res.json();
+            name    = name    || data.name;
+            year    = year    || data.year;
+            theme   = theme   || await fetchTheme(data.theme_id);
+            img_url = img_url || data.set_img_url || null;
+        }
+        if (!img_url) img_url = `https://cdn.rebrickable.com/media/sets/${set_num}.jpg`;
+
+        const cleanCondition = validConditions.includes(condition) ? condition : null;
+        const cleanPrice = (price_paid !== '' && price_paid != null && !isNaN(parseFloat(price_paid)))
+            ? parseFloat(price_paid) : null;
+
+        return { set_num, name, img_url, year: parseInt(year) || null, theme, condition: cleanCondition, price_paid: cleanPrice };
+    }
+
+    // Process updates first
+    for (const row of toUpdate) {
         try {
-            let { set_num, name, theme, year, condition } = row;
-
-            updateProgress(set_num);
-
-            // Only fetch from Rebrickable if data is actually missing
-            let img_url = row.img_url || null;
-            if (!name || !theme || !year || !img_url) {
-                const res = await fetch(`https://rebrickable.com/api/v3/lego/sets/${set_num}/`, {
-                    headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
-                });
-                if (!res.ok) throw new Error('Not found on Rebrickable');
-                const data = await res.json();
-                name    = name    || data.name;
-                year    = year    || data.year;
-                theme   = theme   || await fetchTheme(data.theme_id);
-                img_url = img_url || data.set_img_url || null;
-            }
-            // Final fallback: construct URL from set number
-            if (!img_url) img_url = `https://cdn.rebrickable.com/media/sets/${set_num}.jpg`;
-
-            const validConditions = CONDITIONS.map(c => c.value);
-            const cleanCondition = validConditions.includes(condition) ? condition : null;
-
-            const { error } = await db.from('lego_collection').insert([{
-                set_num, name,
-                img_url,
-                year: parseInt(year) || null,
-                theme,
-                condition: cleanCondition
-            }]);
-
+            updateProgress(row.set_num);
+            const payload = await enrichRow(row);
+            const { error } = await db.from('lego_collection')
+                .update({ name: payload.name, theme: payload.theme, year: payload.year,
+                          condition: payload.condition, price_paid: payload.price_paid, img_url: payload.img_url })
+                .eq('set_num', payload.set_num);
             if (error) throw new Error(error.message);
-            imported++;
-            updateProgress(set_num);
+            updated++;
+            updateProgress();
+        } catch (err) {
+            failed++;
+            failedSets.push(`${row.set_num} (${err.message})`);
+            updateProgress();
+        }
+    }
+
+    // Process inserts
+    for (const row of toInsert) {
+        try {
+            updateProgress(row.set_num);
+            const payload = await enrichRow(row);
+            const { error } = await db.from('lego_collection').insert([payload]);
+            if (error) throw new Error(error.message);
+            inserted++;
+            updateProgress();
         } catch (err) {
             failed++;
             failedSets.push(`${row.set_num} (${err.message})`);
@@ -1997,20 +2062,19 @@ async function confirmImport() {
     // Final state
     preview.innerHTML = `
         <div style="border:1px solid #333;padding:15px;margin-top:10px;text-align:left;font-size:0.85em;">
-            <div style="color:#00ff00;margin-bottom:8px;">✓ IMPORT COMPLETE</div>
+            <div style="color:#00ff00;margin-bottom:8px;">✓ ${mode === 'sync' ? 'SYNC' : 'IMPORT'} COMPLETE</div>
             <div style="background:#111;border:1px solid #333;height:12px;margin-bottom:10px;">
                 <div style="background:#00ff00;height:100%;width:100%;"></div>
             </div>
-            <div style="color:#00ffff;">${imported} set${imported !== 1 ? 's' : ''} added to collection</div>
-            ${failed ? `<div style="color:#ff6666;margin-top:6px;">✗ ${failed} failed:<br>${failedSets.map(s => `<span style="color:#884444;">${s}</span>`).join('<br>')}</div>` : ''}
+            ${updated  ? `<div style="color:#00e5ff;">⟳ ${updated} set${updated !== 1 ? 's' : ''} updated</div>`  : ''}
+            ${inserted ? `<div style="color:#00ffff;">✓ ${inserted} set${inserted !== 1 ? 's' : ''} added</div>`  : ''}
+            ${failed   ? `<div style="color:#ff6666;margin-top:6px;">✗ ${failed} failed:<br>${failedSets.map(s => `<span style="color:#884444;">${s}</span>`).join('<br>')}</div>` : ''}
         </div>
     `;
 
-    // Reload collection cache with fresh data
     await loadCollection();
     document.getElementById('csv-file-input').value = '';
 
-    // Unlock modal now that import is done
     if (modal) delete modal.dataset.importing;
     if (closeBtn) closeBtn.disabled = false;
 }

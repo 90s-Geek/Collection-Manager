@@ -13,7 +13,6 @@
         h1 { color: var(--cyan); }
         h1::before { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
     </style>
-    <script defer src="/_vercel/speed-insights/script.js"></script>
 </head>
 <body>
     <div class="sidebar-panel"></div>
@@ -38,9 +37,21 @@
             <h2>Import CSV</h2>
             <div class="import-instructions">
                 Upload a CSV with a <span class="import-col">set_num</span> column.<br>
-                Optional columns: <span class="import-col">name, theme, year, condition</span><br>
-                Missing data will be fetched from Rebrickable.<br>
-                Duplicates already in your collection will be skipped.
+                Optional columns: <span class="import-col">name, theme, year, condition, price_paid</span><br>
+                Missing data will be fetched from Rebrickable.
+            </div>
+            <div style="margin:10px 0;display:flex;gap:0;border:1px solid #333;border-radius:4px;overflow:hidden;font-family:'Courier New',monospace;font-size:0.75em;">
+                <button id="mode-add" onclick="setImportMode('add')"
+                    style="flex:1;padding:7px;background:#00ff0022;color:#00ff88;border:none;cursor:pointer;border-right:1px solid #333;">
+                    ＋ ADD NEW ONLY
+                </button>
+                <button id="mode-sync" onclick="setImportMode('sync')"
+                    style="flex:1;padding:7px;background:#111;color:#555;border:none;cursor:pointer;">
+                    ⟳ SYNC / UPDATE ALL
+                </button>
+            </div>
+            <div id="import-mode-hint" style="font-size:0.72em;color:#666;margin-bottom:8px;font-family:'Courier New',monospace;">
+                Add new sets only — existing records are skipped.
             </div>
             <input type="file" id="csv-file-input" accept=".csv" style="display:none;" onchange="handleCSVFile(event)">
             <button onclick="document.getElementById('csv-file-input').click()" class="import-file-btn">SELECT CSV FILE</button>
