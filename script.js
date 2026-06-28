@@ -225,14 +225,11 @@ function restoreFilterState() {
 // Avoids redundant Rebrickable API calls for themes already fetched this session
 const themeCache = {};
 
-// --- Fetch Retail Price via Netlify proxy ---
-// Brickset's API blocks direct browser fetch() calls (no CORS headers).
-// The Netlify function at /.netlify/functions/brickset proxies the call
-// server-side and returns the price fields we need with proper CORS headers.
+// --- Fetch Retail Price via Vercel proxy ---
 async function fetchRetailPrice(setNum) {
     if (setNum in retailPriceCache) return retailPriceCache[setNum];
     try {
-        const url = `/.netlify/functions/brickset?setNumber=${encodeURIComponent(setNum)}`;
+        const url = `/api/brickset?setNumber=${encodeURIComponent(setNum)}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Proxy error ${res.status}`);
         const data = await res.json();
