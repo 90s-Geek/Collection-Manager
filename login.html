@@ -73,11 +73,17 @@
         }
 
         .logo-area img {
-            width: 90px;
-            height: 90px;
+            width: 150px;
+            height: 150px;
             border-radius: 50%;
-            border: 2px solid var(--green-dim);
-            box-shadow: 0 0 24px var(--green-glow);
+            border: 3px solid var(--green-dim);
+            box-shadow: 0 0 30px var(--green-glow), 0 0 60px var(--green-glow), 0 0 90px rgba(0, 255, 136, 0.1);
+            animation: logoGlow 3s ease-in-out infinite;
+        }
+    
+        @keyframes logoGlow {
+            0%, 100% { box-shadow: 0 0 30px var(--green-glow), 0 0 60px var(--green-glow), 0 0 90px rgba(0, 255, 136, 0.1); }
+            50%       { box-shadow: 0 0 40px var(--green-glow), 0 0 80px var(--green-glow), 0 0 120px rgba(0, 255, 136, 0.2); }
         }
 
         .logo-area h1 {
