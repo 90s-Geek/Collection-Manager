@@ -152,10 +152,10 @@ button:active { transform: translateY(0); }
 
 .logo {
     position: fixed;
-    top: 12px;
-    left: calc(var(--sidebar-width) / 2 - 26px);
-    width: 52px;
-    height: 52px;
+    top: 10px;
+    left: calc(var(--sidebar-width) / 2 - 34px);
+    width: 68px;
+    height: 68px;
     display: block;
     cursor: pointer;
     z-index: 101;
@@ -228,7 +228,7 @@ button:active { transform: translateY(0); }
 
 .quick-links {
     position: fixed;
-    top: 84px;
+    top: 96px;
     left: 12px;
     display: flex;
     flex-direction: column;
@@ -1504,8 +1504,8 @@ button:active { transform: translateY(0); }
 @media (max-width: 900px) and (min-width: 601px) {
     :root { --sidebar-width: 140px; }
     body { margin-left: calc(var(--sidebar-width) + 28px); }
-    .logo { width: 46px; height: 46px; top: 10px; left: calc(var(--sidebar-width) / 2 - 23px); }
-    .quick-links { top: 76px; left: 8px; width: calc(var(--sidebar-width) - 16px); }
+    .logo { width: 58px; height: 58px; top: 9px; left: calc(var(--sidebar-width) / 2 - 29px); }
+    .quick-links { top: 84px; left: 8px; width: calc(var(--sidebar-width) - 16px); }
     .quick-links a { font-size: 0.62em; padding: 6px 8px; }
 }
 
