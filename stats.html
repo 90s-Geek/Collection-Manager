@@ -381,7 +381,6 @@
         .value-neutral { color: var(--text-dim); }
 
     </style>
-    <script defer src="/_vercel/speed-insights/script.js"></script>
 </head>
 <body>
     <div class="sidebar-panel"></div>
@@ -389,8 +388,8 @@
 
     <div class="nav">
         <a href="index.html">SEARCH</a>
-        <a href="collection.html">COLLECTION</a>
-        <a href="wantlist.html">WISH LIST</a>
+        <a href="collection.html">LEGO</a>
+        <a href="wantlist.html">LEGO WANTS</a>
     </div>
     <div id="toast-container"></div>
 
@@ -639,14 +638,22 @@
         // ── Compute KPIs ──
         const withPaid    = col.filter(i => i.price_paid != null);
         const withRetail  = col.filter(i => retailPriceCache[i.set_num] != null);
+        const withMarket  = col.filter(i => i.market_value != null);
         const totalPaid   = withPaid.reduce((s, i) => s + Number(i.price_paid), 0);
         const totalRetail = withRetail.reduce((s, i) => s + (retailPriceCache[i.set_num] || 0), 0);
-        // Gain/loss only for sets where both prices known
+        const totalMarket = withMarket.reduce((s, i) => s + Number(i.market_value), 0);
+        // Gain/loss vs retail — only for sets where both prices known
         const overlap     = col.filter(i => i.price_paid != null && retailPriceCache[i.set_num] != null);
         const overlapPaid = overlap.reduce((s, i) => s + Number(i.price_paid), 0);
         const overlapRetail = overlap.reduce((s, i) => s + (retailPriceCache[i.set_num] || 0), 0);
         const gainLoss    = overlapRetail - overlapPaid;
         const gainPct     = overlapPaid > 0 ? ((gainLoss / overlapPaid) * 100).toFixed(1) : null;
+        // Gain/loss vs market — only for sets where both prices known
+        const overlapMkt  = col.filter(i => i.price_paid != null && i.market_value != null);
+        const overlapMktPaid = overlapMkt.reduce((s, i) => s + Number(i.price_paid), 0);
+        const overlapMktVal  = overlapMkt.reduce((s, i) => s + Number(i.market_value), 0);
+        const gainLossMkt = overlapMktVal - overlapMktPaid;
+        const gainPctMkt  = overlapMktPaid > 0 ? ((gainLossMkt / overlapMktPaid) * 100).toFixed(1) : null;
 
         const fmtMoney = v => v >= 1000 ? `$${(v/1000).toFixed(1)}k` : `$${v.toFixed(0)}`;
         const coveragePct = setNums.length ? Math.round((withRetail.length / setNums.length) * 100) : 0;
@@ -654,8 +661,8 @@
         document.getElementById('value-coverage-label').textContent =
             `${withRetail.length}/${col.length} sets with retail data (${coveragePct}%)`;
 
-        const gainClass = gainLoss > 0 ? 'value-gain' : gainLoss < 0 ? 'value-loss' : 'value-neutral';
-        const gainSign  = gainLoss >= 0 ? '+' : '';
+        const gainClassMkt = gainLossMkt > 0 ? 'value-gain' : gainLossMkt < 0 ? 'value-loss' : 'value-neutral';
+        const gainSignMkt  = gainLossMkt >= 0 ? '+' : '';
 
         document.getElementById('value-kpi-grid').innerHTML = `
             <div class="value-kpi">
@@ -670,8 +677,18 @@
             </div>
             <div class="value-kpi">
                 <div class="value-kpi-val ${gainClass}">${overlap.length > 0 ? `${gainSign}${fmtMoney(gainLoss)}` : '—'}</div>
-                <div class="value-kpi-label">Gain / Loss</div>
+                <div class="value-kpi-label">Gain / Loss vs Retail</div>
                 <div class="value-kpi-sub">${gainPct != null ? `${gainSign}${gainPct}% vs paid` : 'Log prices to track'}</div>
+            </div>
+            <div class="value-kpi">
+                <div class="value-kpi-val" style="color:#ffaa00">${withMarket.length > 0 ? fmtMoney(totalMarket) : '—'}</div>
+                <div class="value-kpi-label">Market Value</div>
+                <div class="value-kpi-sub">${withMarket.length} set${withMarket.length !== 1 ? 's' : ''} logged</div>
+            </div>
+            <div class="value-kpi">
+                <div class="value-kpi-val ${gainClassMkt}">${overlapMkt.length > 0 ? `${gainSignMkt}${fmtMoney(gainLossMkt)}` : '—'}</div>
+                <div class="value-kpi-label">Gain / Loss vs Market</div>
+                <div class="value-kpi-sub">${gainPctMkt != null ? `${gainSignMkt}${gainPctMkt}% vs paid` : 'Log market values to track'}</div>
             </div>
         `;
 
@@ -723,6 +740,7 @@
                         <div style="text-align:right;flex-shrink:0;">
                             <div style="font-family:var(--mono);font-size:0.9em;color:var(--cyan);font-weight:700;">$${item.retailPrice.toFixed(2)}</div>
                             ${item.price_paid != null ? `<div style="font-family:var(--mono);font-size:0.62em;color:var(--text-muted);">paid $${Number(item.price_paid).toFixed(2)}${diffHtml}</div>` : `<div style="font-family:var(--mono);font-size:0.62em;color:var(--text-muted);">no price logged</div>`}
+                            ${item.market_value != null ? `<div style="font-family:var(--mono);font-size:0.62em;color:#ffaa00;">📈 $${Number(item.market_value).toFixed(2)} mkt</div>` : ''}
                         </div>
                     </div>
                 `;

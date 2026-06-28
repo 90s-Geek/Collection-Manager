@@ -1150,8 +1150,11 @@ function renderCollection(data) {
         const priceBadge = item.price_paid != null
             ? `<span style="font-family:var(--mono);font-size:0.62em;color:var(--green);margin-left:6px;border:1px solid var(--green-dim);padding:1px 5px;border-radius:3px;vertical-align:middle;" title="Price paid">$${Number(item.price_paid).toFixed(2)}</span>`
             : '';
+        const marketBadge = item.market_value != null
+            ? `<span style="font-family:var(--mono);font-size:0.62em;color:#ffaa00;margin-left:4px;border:1px solid #4a3200;padding:1px 5px;border-radius:3px;vertical-align:middle;" title="Market value">📈$${Number(item.market_value).toFixed(2)}</span>`
+            : '';
         textDiv.innerHTML = `
-            <strong>${item.name}</strong> (${item.year})${conditionBadge(item.condition)}${priceBadge}<br>
+            <strong>${item.name}</strong> (${item.year})${conditionBadge(item.condition)}${priceBadge}${marketBadge}<br>
             <small style="color:#00ffff;">Theme: ${item.theme}</small>`;
 
         infoDiv.appendChild(checkbox);
@@ -1210,6 +1213,24 @@ function showModal(item) {
                 <span id="modal-retail-price" style="font-family:var(--mono);font-size:0.7em;color:var(--text-muted);"></span>
             </div>
             <button onclick="updatePricePaid(${item.id})" style="width:100%;background:transparent;color:var(--green);border:1px solid var(--green-dim);padding:7px;font-family:var(--mono);font-size:0.75em;font-weight:bold;cursor:pointer;border-radius:var(--radius-sm);letter-spacing:1px;transition:background 0.2s;" onmouseover="this.style.background='rgba(0,255,136,0.08)'" onmouseout="this.style.background='transparent'">UPDATE PRICE</button>
+        </div>
+        <div style="margin-top:10px;border-top:1px solid var(--border2);padding-top:12px;">
+            <div style="font-family:var(--mono);font-size:0.68em;color:var(--text-muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Market Value <span style="color:#4a3200;font-size:0.85em;">(from BrickEconomy)</span></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <span style="font-family:var(--mono);color:#ffaa00;font-size:1em;">$</span>
+                <input id="modal-market-input" type="number" min="0" step="0.01"
+                    value="${item.market_value != null ? item.market_value : ''}"
+                    placeholder="0.00"
+                    style="background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:6px 10px;font-family:var(--mono);font-size:0.9em;width:120px;outline:none;"
+                    onfocus="this.style.borderColor='#4a3200'" onblur="this.style.borderColor='var(--border2)'">
+                ${item.market_value != null && item.price_paid != null ? (() => {
+                    const diff = Number(item.market_value) - Number(item.price_paid);
+                    const pct = ((diff / Number(item.price_paid)) * 100).toFixed(1);
+                    const col = diff >= 0 ? 'var(--green)' : 'var(--red)';
+                    return `<span style="font-family:var(--mono);font-size:0.7em;color:${col};">${diff >= 0 ? '+' : ''}$${diff.toFixed(2)} (${diff >= 0 ? '+' : ''}${pct}%)</span>`;
+                })() : ''}
+            </div>
+            <button onclick="updateMarketValue(${item.id})" style="width:100%;background:transparent;color:#ffaa00;border:1px solid #4a3200;padding:7px;font-family:var(--mono);font-size:0.75em;font-weight:bold;cursor:pointer;border-radius:var(--radius-sm);letter-spacing:1px;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,170,0,0.08)'" onmouseout="this.style.background='transparent'">UPDATE MARKET VALUE</button>
             ${beLink}
         </div>`;
 
@@ -1277,6 +1298,23 @@ async function updatePricePaid(id) {
     const item = collectionCache.find(i => i.id === id);
     if (item) item.price_paid = price_paid;
     showToast("Price updated!", 'success');
+    applyControls();
+    document.getElementById('set-modal').classList.remove('active');
+}
+
+async function updateMarketValue(id) {
+    const raw = document.getElementById('modal-market-input')?.value;
+    const market_value = (raw !== '' && raw != null) ? parseFloat(raw) : null;
+    const { error } = await db.from('lego_collection').update({
+        market_value: (!isNaN(market_value) && market_value !== null) ? market_value : null
+    }).eq('id', id);
+    if (error) {
+        showToast("Error updating market value: " + error.message, 'error');
+        return;
+    }
+    const item = collectionCache.find(i => i.id === id);
+    if (item) item.market_value = market_value;
+    showToast("Market value updated!", 'success');
     applyControls();
     document.getElementById('set-modal').classList.remove('active');
 }
@@ -1397,11 +1435,11 @@ async function bulkExportSelected() {
     if (!items.length) return showToast('No sets selected.', 'warning');
     showToast("Fetching retail prices… this may take a moment.", 'info');
     await prefetchRetailPrices(items.map(i => i.set_num));
-    const headers = ['set_num', 'name', 'theme', 'year', 'condition', 'price_paid', 'retail_price', 'img_url'];
+    const headers = ['set_num', 'name', 'theme', 'year', 'condition', 'price_paid', 'market_value', 'retail_price', 'img_url'];
     const rows = items.map(item => {
         const retail = retailPriceCache[item.set_num] ?? '';
         return [
-            ...['set_num', 'name', 'theme', 'year', 'condition', 'price_paid'].map(h => `"${(item[h] != null ? item[h] : '').toString().replace(/"/g, '""')}"`),
+            ...['set_num', 'name', 'theme', 'year', 'condition', 'price_paid', 'market_value'].map(h => `"${(item[h] != null ? item[h] : '').toString().replace(/"/g, '""')}"`),
             `"${retail}"`,
             `"${(item.img_url || '').replace(/"/g, '""')}"`
         ].join(',');
@@ -2275,11 +2313,11 @@ async function exportCollection() {
     showToast("Fetching retail prices… this may take a moment.", 'info');
     await prefetchRetailPrices(collectionCache.map(i => i.set_num));
     const sorted = [...collectionCache].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    const headers = ['set_num', 'name', 'theme', 'year', 'condition', 'price_paid', 'retail_price', 'img_url'];
+    const headers = ['set_num', 'name', 'theme', 'year', 'condition', 'price_paid', 'market_value', 'retail_price', 'img_url'];
     const rows = sorted.map(item => {
         const retail = retailPriceCache[item.set_num] ?? '';
         return [
-            ...['set_num', 'name', 'theme', 'year', 'condition', 'price_paid'].map(h => `"${(item[h] != null ? item[h] : '').toString().replace(/"/g, '""')}"`),
+            ...['set_num', 'name', 'theme', 'year', 'condition', 'price_paid', 'market_value'].map(h => `"${(item[h] != null ? item[h] : '').toString().replace(/"/g, '""')}"`),
             `"${retail}"`,
             `"${(item.img_url || '').replace(/"/g, '""')}"`
         ].join(',');
