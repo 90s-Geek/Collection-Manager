@@ -225,6 +225,14 @@ function restoreFilterState() {
 // Avoids redundant Rebrickable API calls for themes already fetched this session
 const themeCache = {};
 
+// --- BrickEconomy deep-link ---
+// Builds a search URL for a set on BrickEconomy using the set number.
+// e.g. "75192-1" → https://www.brickeconomy.com/search?query=75192-1
+function brickEconomyUrl(setNum) {
+    if (!setNum) return null;
+    return `https://www.brickeconomy.com/search?query=${encodeURIComponent(setNum)}`;
+}
+
 // --- Fetch Retail Price via Netlify proxy ---
 // Brickset's API blocks direct browser fetch() calls (no CORS headers).
 // The Netlify function at /.netlify/functions/brickset proxies the call
@@ -552,6 +560,7 @@ function renderSearchResult(set) {
         <div class="set-meta">
             <strong>Year:</strong> ${set.year} | <strong>Theme:</strong> ${set.theme_name} | 
             <strong>Set #:</strong> <a href="https://rebrickable.com/sets/${set.set_num}/" target="_blank" rel="noopener" style="color:#00ffff;text-decoration:none;" title="View on Rebrickable">${set.set_num} ↗</a>
+            &nbsp;·&nbsp; <a href="${brickEconomyUrl(set.set_num)}" target="_blank" rel="noopener" style="color:#ffaa00;text-decoration:none;font-size:0.9em;" title="Check market value on BrickEconomy">📈 BrickEconomy ↗</a>
         </div>
         ${statusBanner}
         <div class="search-img-wrap" onclick="openImageLightbox()" title="Click to view details">
@@ -1179,6 +1188,15 @@ function showModal(item) {
             <button onclick="updateCondition(${item.id})" style="margin-top:8px;width:100%;background:#00ff00;color:#000;border:none;padding:7px;font-family:'Courier New',monospace;font-weight:bold;cursor:pointer;">UPDATE CONDITION</button>
         </div>`;
 
+    const beUrl = item.set_num ? brickEconomyUrl(item.set_num) : null;
+    const beLink = beUrl ? `
+        <a href="${beUrl}" target="_blank" rel="noopener"
+            style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:8px;padding:7px;background:transparent;color:#ffaa00;border:1px solid #4a3200;border-radius:var(--radius-sm);font-family:var(--mono);font-size:0.75em;font-weight:bold;letter-spacing:1px;text-decoration:none;transition:background 0.2s;box-sizing:border-box;"
+            onmouseover="this.style.background='rgba(255,170,0,0.08)'" onmouseout="this.style.background='transparent'"
+            title="Check current market value on BrickEconomy">
+            📈 MARKET VALUE ON BRICKECONOMY ↗
+        </a>` : '';
+
     const priceSection = onWantlist ? '' : `
         <div style="margin-top:12px;border-top:1px solid var(--border2);padding-top:12px;">
             <div style="font-family:var(--mono);font-size:0.68em;color:var(--text-muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Price Paid</div>
@@ -1192,6 +1210,7 @@ function showModal(item) {
                 <span id="modal-retail-price" style="font-family:var(--mono);font-size:0.7em;color:var(--text-muted);"></span>
             </div>
             <button onclick="updatePricePaid(${item.id})" style="width:100%;background:transparent;color:var(--green);border:1px solid var(--green-dim);padding:7px;font-family:var(--mono);font-size:0.75em;font-weight:bold;cursor:pointer;border-radius:var(--radius-sm);letter-spacing:1px;transition:background 0.2s;" onmouseover="this.style.background='rgba(0,255,136,0.08)'" onmouseout="this.style.background='transparent'">UPDATE PRICE</button>
+            ${beLink}
         </div>`;
 
     const setNumDisplay = item.set_num
