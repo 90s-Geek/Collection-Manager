@@ -1504,8 +1504,8 @@ button:active { transform: translateY(0); }
 @media (max-width: 900px) and (min-width: 601px) {
     :root { --sidebar-width: 140px; }
     body { margin-left: calc(var(--sidebar-width) + 28px); }
-    .logo { width: 58px; height: 58px; top: 9px; left: calc(var(--sidebar-width) / 2 - 29px); }
-    .quick-links { top: 84px; left: 8px; width: calc(var(--sidebar-width) - 16px); }
+    .logo { width: 70px; height: 70px; top: 35px; left: calc(var(--sidebar-width) / 2 - 35px); }
+    .quick-links { top: 140px; left: 8px; width: calc(var(--sidebar-width) - 16px); }
     .quick-links a { font-size: 0.62em; padding: 6px 8px; }
 }
 
