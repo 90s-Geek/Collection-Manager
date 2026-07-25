@@ -661,6 +661,8 @@
         document.getElementById('value-coverage-label').textContent =
             `${withRetail.length}/${col.length} sets with retail data (${coveragePct}%)`;
 
+        const gainClass    = gainLoss > 0 ? 'value-gain' : gainLoss < 0 ? 'value-loss' : 'value-neutral';
+        const gainSign     = gainLoss >= 0 ? '+' : '';
         const gainClassMkt = gainLossMkt > 0 ? 'value-gain' : gainLossMkt < 0 ? 'value-loss' : 'value-neutral';
         const gainSignMkt  = gainLossMkt >= 0 ? '+' : '';
 
