@@ -44,6 +44,8 @@
             box-shadow: 0 0 8px var(--green);
         }
         .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .kpi-card.clickable { cursor: pointer; }
+        .kpi-card.clickable:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 1px rgba(57,232,128,0.15); }
         .kpi-card:nth-child(2) { animation-delay: 0.05s; }
         .kpi-card:nth-child(2)::after { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
         .kpi-card:nth-child(3) { animation-delay: 0.10s; }
@@ -156,6 +158,9 @@
             border-radius: 6px;
         }
         .bar-count { font-family: var(--mono); font-size: 0.7em; color: var(--text-muted); text-align: left; }
+        .bar-row.clickable { cursor: pointer; }
+        .bar-row.clickable:hover .bar-label { color: var(--green); }
+        .bar-row.clickable:hover .bar-track { box-shadow: 0 0 0 1px rgba(57,232,128,0.2); }
 
         /* Colour variants */
         .bar-fill.cyan    { background: linear-gradient(90deg, #009eb5, var(--cyan)); box-shadow: 0 0 6px rgba(0,229,255,0.3); }
@@ -184,6 +189,8 @@
             transition: border-color var(--transition), transform var(--transition);
         }
         .condition-tile:hover { border-color: var(--border2); transform: translateY(-1px); }
+        .condition-tile.clickable { cursor: pointer; }
+        .condition-tile.clickable:hover { border-color: var(--green-dim, var(--green)); box-shadow: 0 0 0 1px rgba(57,232,128,0.15); }
         .condition-tile-val {
             font-family: var(--mono);
             font-size: 1.8em;
@@ -206,6 +213,54 @@
         }
         .condition-tile-bar { height: 3px; border-radius: 2px; margin-top: 10px; transition: width 0.5s; }
 
+        /* ── Sets-list modal (drill-down for clickable stats) ──── */
+        .stats-list-box { max-width: 480px; text-align: left; padding: 24px; }
+        .stats-list-title {
+            font-family: var(--mono);
+            font-size: 0.85em;
+            letter-spacing: 1px;
+            color: var(--text);
+            text-transform: uppercase;
+            margin: 0 0 4px;
+            padding-right: 24px;
+        }
+        .stats-list-count {
+            font-family: var(--mono);
+            font-size: 0.68em;
+            color: var(--text-muted);
+            margin-bottom: 14px;
+        }
+        .stats-list-items { max-height: 55vh; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
+        .stats-list-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 7px 9px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius-sm);
+        }
+        .stats-list-item img {
+            width: 34px; height: 26px; object-fit: contain;
+            background: #fff; border-radius: 3px; flex-shrink: 0;
+        }
+        .stats-list-item-name {
+            font-family: var(--sans);
+            font-size: 0.82em;
+            color: var(--text);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .stats-list-item-meta {
+            font-family: var(--mono);
+            font-size: 0.63em;
+            color: var(--text-muted);
+        }
+        .stats-list-empty {
+            font-family: var(--mono);
+            font-size: 0.75em;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 20px 0;
+        }
+
         /* ── Timeline (years) ────────────────────────────────── */
         .timeline-wrap { overflow: hidden; padding-bottom: 6px; }
         .timeline {
@@ -221,7 +276,7 @@
             flex-direction: column;
             align-items: center;
             gap: 4px;
-            cursor: default;
+            cursor: pointer;
             flex: 1;
             min-width: 0;
         }
@@ -446,6 +501,16 @@
     <nav class="quick-links"></nav>
     <div id="stats-tooltip"></div>
 
+    <!-- Drill-down modal: shows which sets make up a clicked stat -->
+    <div class="modal-overlay" id="stats-list-modal" onclick="closeStatsListModal(event)">
+        <div class="modal-box stats-list-box" id="stats-list-box">
+            <button class="modal-close" onclick="document.getElementById('stats-list-modal').classList.remove('active')">✕</button>
+            <div class="stats-list-title" id="stats-list-title"></div>
+            <div class="stats-list-count" id="stats-list-count"></div>
+            <div class="stats-list-items" id="stats-list-items"></div>
+        </div>
+    </div>
+
     <script src="script.js?v=11"></script>
     <script>
     // ── Config (same as script.js) ────────────────────────────
@@ -470,6 +535,9 @@
     }
 
     // ── Main loader ───────────────────────────────────────────
+    let statsCollectionCache = [];
+    let statsWantlistCache = [];
+
     async function loadStats() {
         const [colRes, wlRes] = await Promise.all([
             db.from('lego_collection').select('*').order('created_at', { ascending: false }),
@@ -478,6 +546,8 @@
 
         const col = colRes.data || [];
         const wl  = wlRes.data  || [];
+        statsCollectionCache = col;
+        statsWantlistCache = wl;
 
         renderKPIs(col, wl);
         renderThemeChart(col);
@@ -496,23 +566,39 @@
         const sealed     = col.filter(i => i.condition === 'Sealed').length;
 
         const kpis = [
-            { val: fmt(col.length), label: 'Sets in Collection', color: 'green' },
+            { val: fmt(col.length), label: 'Sets in Collection', color: 'green', kind: 'all' },
             { val: fmt(themes),     label: 'Unique Themes',      color: 'cyan' },
-            { val: sealed,          label: 'Sealed Sets',        color: 'magenta' },
-            { val: earliest,        label: 'Oldest Year',        color: 'purple' },
-            { val: newest,          label: 'Newest Year',        color: 'green' },
-            { val: fmt(wl.length),  label: 'On Wish List',       color: 'amber' },
+            { val: sealed,          label: 'Sealed Sets',        color: 'magenta', kind: 'sealed' },
+            { val: earliest,        label: 'Oldest Year',        color: 'purple', kind: earliest !== '—' ? 'year' : null, year: earliest },
+            { val: newest,          label: 'Newest Year',        color: 'green', kind: newest !== '—' ? 'year' : null, year: newest },
+            { val: fmt(wl.length),  label: 'On Wish List',       color: 'amber', kind: 'wishlist' },
         ];
 
         document.getElementById('kpi-grid').innerHTML = kpis.map(k => `
-            <div class="kpi-card">
+            <div class="kpi-card ${k.kind ? 'clickable' : ''}" ${k.kind ? `onclick="showKpiSetsModal('${k.kind}', ${k.year != null && k.year !== '—' ? k.year : 'null'})" title="Click to see sets"` : ''}>
                 <div class="kpi-val">${k.val}</div>
                 <div class="kpi-label">${k.label}</div>
             </div>
         `).join('');
     }
 
+    function showKpiSetsModal(kind, year) {
+        if (kind === 'all') {
+            openStatsListModal('All Sets', statsCollectionCache, item => `${item.theme || '—'} · ${item.year || '—'}`);
+        } else if (kind === 'sealed') {
+            showConditionSetsModal('Sealed');
+        } else if (kind === 'year') {
+            const sets = statsCollectionCache.filter(i => Number(i.year) === Number(year));
+            openStatsListModal(`${year} Sets`, sets, item => `${item.theme || '—'} · ${item.condition || 'no condition'}`);
+        } else if (kind === 'wishlist') {
+            openStatsListModal('Wish List', statsWantlistCache, item => `${item.theme || '—'} · ${item.year || '—'}`);
+        }
+    }
+
     // ── Theme Bar Chart ───────────────────────────────────────
+    let lastThemeChartData = [];
+    let lastValueThemeChartData = [];
+
     function renderThemeChart(col) {
         const counts = {};
         col.forEach(i => { if (i.theme) counts[i.theme] = (counts[i.theme] || 0) + 1; });
@@ -520,10 +606,11 @@
         const top    = sorted.slice(0, 12);
         const max    = top[0]?.[1] || 1;
         const colors = ['', 'cyan', 'magenta', 'amber', 'purple', 'red', '', 'cyan', 'magenta', 'amber', 'purple', 'red'];
+        lastThemeChartData = top;
 
         document.getElementById('theme-count-label').textContent = `${sorted.length} themes total`;
         document.getElementById('theme-chart').innerHTML = top.map(([theme, count], i) => `
-            <div class="bar-row" data-tip="${theme}: ${count} set${count !== 1 ? 's' : ''}">
+            <div class="bar-row clickable" data-tip="${theme}: ${count} set${count !== 1 ? 's' : ''}" onclick="showThemeSetsModal(${i})">
                 <div class="bar-label">${theme}</div>
                 <div class="bar-track">
                     <div class="bar-fill ${colors[i]}" style="width:${(count/max*100).toFixed(1)}%;animation-delay:${i*40}ms"></div>
@@ -531,6 +618,24 @@
                 <div class="bar-count">${count}</div>
             </div>
         `).join('') || '<div class="stats-loading">No data</div>';
+    }
+
+    function showThemeSetsModal(index) {
+        const entry = lastThemeChartData[index];
+        if (!entry) return;
+        const [theme] = entry;
+        const sets = statsCollectionCache.filter(i => i.theme === theme);
+        openStatsListModal(`${theme} Sets`, sets, item => `${item.year || '—'} · ${item.condition || 'no condition'}`);
+    }
+
+    function showValueThemeSetsModal(index) {
+        const entry = lastValueThemeChartData[index];
+        if (!entry) return;
+        const [theme] = entry;
+        const sets = statsCollectionCache
+            .filter(i => i.theme === theme && i.market_value != null)
+            .sort((a, b) => Number(b.market_value) - Number(a.market_value));
+        openStatsListModal(`${theme} — Market Value`, sets, item => `$${Number(item.market_value).toFixed(2)} mkt · ${item.year || '—'}`);
     }
 
     // ── Year Timeline ─────────────────────────────────────────
@@ -549,7 +654,7 @@
             const c   = counts[yr];
             const h   = Math.max(4, Math.round((c / max) * MAX_H));
             return `
-                <div class="tl-col" data-tip="${yr}: ${c} set${c !== 1 ? 's' : ''}">
+                <div class="tl-col" data-tip="${yr}: ${c} set${c !== 1 ? 's' : ''}" onclick="showKpiSetsModal('year', ${yr})">
                     <div class="tl-count">${c}</div>
                     <div class="tl-bar" style="height:${h}px;animation-delay:${i*18}ms"></div>
                     <div class="tl-year">${yr}</div>
@@ -579,7 +684,7 @@
         document.getElementById('condition-chart').innerHTML = rows.map(r => {
             const pct = ((r.count / total) * 100).toFixed(0);
             return `
-                <div class="condition-tile">
+                <div class="condition-tile clickable" onclick="showConditionSetsModal('${r.label}')" title="Click to see sets">
                     <div class="condition-tile-val" style="color:${r.color}">${r.count}</div>
                     <div class="condition-tile-pct">${pct}%</div>
                     <div class="condition-tile-label">${r.label}</div>
@@ -587,6 +692,40 @@
                 </div>
             `;
         }).join('');
+    }
+
+    function showConditionSetsModal(label) {
+        const sets = label === 'Unset'
+            ? statsCollectionCache.filter(i => !i.condition)
+            : statsCollectionCache.filter(i => i.condition === label);
+        openStatsListModal(`${label} Sets`, sets, item => `${item.theme || '—'} · ${item.year || '—'}`);
+    }
+
+    // ── Generic drill-down modal ────────────────────────────────
+    function openStatsListModal(title, sets, metaFn) {
+        document.getElementById('stats-list-title').textContent = title;
+        document.getElementById('stats-list-count').textContent =
+            `${sets.length} set${sets.length !== 1 ? 's' : ''}`;
+
+        document.getElementById('stats-list-items').innerHTML = sets.length
+            ? sets.map(item => `
+                <div class="stats-list-item">
+                    <img src="${item.img_url || ''}" alt="${item.name || ''}" onerror="this.style.visibility='hidden'">
+                    <div style="flex:1;min-width:0;">
+                        <div class="stats-list-item-name">${item.name || item.set_num || 'Unknown set'}</div>
+                        <div class="stats-list-item-meta">${metaFn ? metaFn(item) : (item.set_num || '')}</div>
+                    </div>
+                </div>
+            `).join('')
+            : '<div class="stats-list-empty">No sets to show</div>';
+
+        document.getElementById('stats-list-modal').classList.add('active');
+    }
+
+    function closeStatsListModal(e) {
+        if (e.target === document.getElementById('stats-list-modal')) {
+            document.getElementById('stats-list-modal').classList.remove('active');
+        }
     }
 
     // ── Recent Adds ───────────────────────────────────────────
@@ -705,10 +844,11 @@
         const sortedThemes = Object.entries(themeMarket).sort((a,b) => b[1]-a[1]).slice(0, 10);
         const maxVal = sortedThemes[0]?.[1] || 1;
         const colors = ['', 'cyan', 'magenta', 'amber', 'purple', 'red', '', 'cyan', 'magenta', 'amber'];
+        lastValueThemeChartData = sortedThemes;
         document.getElementById('value-theme-label').textContent = `top ${sortedThemes.length} by market value`;
         document.getElementById('value-theme-chart').innerHTML = sortedThemes.length
             ? sortedThemes.map(([theme, val], i) => `
-                <div class="bar-row" data-tip="${theme}: ${fmtMoney(val)} market value">
+                <div class="bar-row clickable" data-tip="${theme}: ${fmtMoney(val)} market value" onclick="showValueThemeSetsModal(${i})">
                     <div class="bar-label">${theme}</div>
                     <div class="bar-track">
                         <div class="bar-fill ${colors[i]}" style="width:${(val/maxVal*100).toFixed(1)}%;animation-delay:${i*40}ms"></div>
