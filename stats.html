@@ -237,7 +237,16 @@
             background: var(--surface2);
             border: 1px solid var(--border2);
             border-radius: var(--radius-sm);
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+            transition: border-color var(--transition), background var(--transition);
         }
+        .stats-list-item:hover {
+            border-color: var(--green-dim, var(--green));
+            background: var(--surface3, var(--surface2));
+        }
+        .stats-list-item:hover .stats-list-item-name { color: var(--green); }
         .stats-list-item img {
             width: 34px; height: 26px; object-fit: contain;
             background: #fff; border-radius: 3px; flex-shrink: 0;
@@ -591,7 +600,7 @@
             const sets = statsCollectionCache.filter(i => Number(i.year) === Number(year));
             openStatsListModal(`${year} Sets`, sets, item => `${item.theme || '—'} · ${item.condition || 'no condition'}`);
         } else if (kind === 'wishlist') {
-            openStatsListModal('Wish List', statsWantlistCache, item => `${item.theme || '—'} · ${item.year || '—'}`);
+            openStatsListModal('Wish List', statsWantlistCache, item => `${item.theme || '—'} · ${item.year || '—'}`, 'wantlist.html');
         }
     }
 
@@ -702,20 +711,21 @@
     }
 
     // ── Generic drill-down modal ────────────────────────────────
-    function openStatsListModal(title, sets, metaFn) {
+    function openStatsListModal(title, sets, metaFn, linkBase) {
+        linkBase = linkBase || 'collection.html';
         document.getElementById('stats-list-title').textContent = title;
         document.getElementById('stats-list-count').textContent =
             `${sets.length} set${sets.length !== 1 ? 's' : ''}`;
 
         document.getElementById('stats-list-items').innerHTML = sets.length
             ? sets.map(item => `
-                <div class="stats-list-item">
+                <a class="stats-list-item" href="${linkBase}?edit=${item.id}" title="Click to edit this set">
                     <img src="${item.img_url || ''}" alt="${item.name || ''}" onerror="this.style.visibility='hidden'">
                     <div style="flex:1;min-width:0;">
                         <div class="stats-list-item-name">${item.name || item.set_num || 'Unknown set'}</div>
                         <div class="stats-list-item-meta">${metaFn ? metaFn(item) : (item.set_num || '')}</div>
                     </div>
-                </div>
+                </a>
             `).join('')
             : '<div class="stats-list-empty">No sets to show</div>';
 

@@ -983,6 +983,22 @@ async function loadCollection() {
     populateFilterDropdowns(collectionCache);
     restoreFilterState();
     applyControls();
+    openEditFromURLParam(collectionCache);
+}
+
+// Opens the edit modal for an item when the page is loaded with ?edit=<id> in
+// the URL (used by the stats page's clickable drill-down lists). Strips the
+// param afterward so a refresh or back-navigation doesn't reopen it.
+function openEditFromURLParam(cache) {
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get('edit');
+    if (!editId) return;
+    const item = cache.find(i => String(i.id) === editId);
+    if (item) showModal(item);
+    params.delete('edit');
+    const rest = params.toString();
+    const newUrl = window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash;
+    window.history.replaceState({}, '', newUrl);
 }
 
 function populateFilterDropdowns(data) {
@@ -1583,6 +1599,7 @@ async function loadWantlist() {
     restoreFilterState();
     initWantlistDrag(); // Set up drag delegation once
     applyWantlistControls();
+    openEditFromURLParam(wantlistCache);
 }
 
 function applyWantlistControls() {
