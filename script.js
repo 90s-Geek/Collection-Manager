@@ -50,7 +50,7 @@ function presenceBadge(setNum) {
         badges.push(`<span class="presence-badge presence-badge--collection">✓ IN COLLECTION</span>`);
     }
     if (wantlistSetNums.has(setNum)) {
-        badges.push(`<span class="presence-badge presence-badge--wantlist">♥ IN WISH LIST</span>`);
+        badges.push(`<span class="presence-badge presence-badge--wantlist">♥ ON WISH LIST</span>`);
     }
     return badges.join('');
 }
@@ -552,7 +552,7 @@ function renderSearchResult(set) {
     const statusBanner = (inCollection || inWantlist) ? `
         <div class="search-status-banner">
             ${inCollection ? `<span class="presence-badge presence-badge--collection">✓ ALREADY IN COLLECTION</span>` : ''}
-            ${inWantlist   ? `<span class="presence-badge presence-badge--wantlist">♥ ALREADY IN WISH LIST</span>`   : ''}
+            ${inWantlist   ? `<span class="presence-badge presence-badge--wantlist">♥ ALREADY ON WISH LIST</span>`   : ''}
         </div>` : '';
 
     document.getElementById('result-container').innerHTML = `
@@ -2249,7 +2249,7 @@ function renderSetOfTheDay(set) {
                     </div>
                     <div style="font-size:0.72em;color:#443300;letter-spacing:1px;margin-bottom:14px;">${set.set_num}</div>
                     ${inCollection ? '<span class="presence-badge presence-badge--collection" style="margin-right:6px;">✓ IN COLLECTION</span>' : ''}
-                    ${inWantlist   ? '<span class="presence-badge presence-badge--wantlist">♥ IN WISH LIST</span>' : ''}
+                    ${inWantlist   ? '<span class="presence-badge presence-badge--wantlist">♥ ON WISH LIST</span>' : ''}
                 </div>
                 <div class="sotd-actions" style="margin-top:14px;">
                     <button class="sotd-btn primary" onclick="selectSotdSet('${set.set_num}', ${set.theme_id})">VIEW SET</button>
