@@ -50,7 +50,7 @@ function presenceBadge(setNum) {
         badges.push(`<span class="presence-badge presence-badge--collection">✓ IN COLLECTION</span>`);
     }
     if (wantlistSetNums.has(setNum)) {
-        badges.push(`<span class="presence-badge presence-badge--wantlist">♥ IN WANT LIST</span>`);
+        badges.push(`<span class="presence-badge presence-badge--wantlist">♥ IN WISH LIST</span>`);
     }
     return badges.join('');
 }
@@ -552,7 +552,7 @@ function renderSearchResult(set) {
     const statusBanner = (inCollection || inWantlist) ? `
         <div class="search-status-banner">
             ${inCollection ? `<span class="presence-badge presence-badge--collection">✓ ALREADY IN COLLECTION</span>` : ''}
-            ${inWantlist   ? `<span class="presence-badge presence-badge--wantlist">♥ ALREADY IN WANT LIST</span>`   : ''}
+            ${inWantlist   ? `<span class="presence-badge presence-badge--wantlist">♥ ALREADY IN WISH LIST</span>`   : ''}
         </div>` : '';
 
     document.getElementById('result-container').innerHTML = `
@@ -580,7 +580,7 @@ function renderSearchResult(set) {
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:10px;">
             <button class="save-btn" onclick="saveCurrentSet()">+ ADD TO COLLECTION</button>
-            <button class="wantlist-btn" onclick="saveToWantList()">♥ ADD TO WANT LIST</button>
+            <button class="wantlist-btn" onclick="saveToWantList()">♥ ADD TO WISH LIST</button>
         </div>
     `;
     const img = document.getElementById('search-result-img');
@@ -1526,7 +1526,7 @@ async function saveToWantList() {
         .limit(1);
 
     if (checkError) { showToast("Database Error: " + checkError.message, 'error'); return; }
-    if (existing && existing.length > 0) { showToast(`"${currentSet.name}" is already on your want list!`, 'warning'); return; }
+    if (existing && existing.length > 0) { showToast(`"${currentSet.name}" is already on your wish list!`, 'warning'); return; }
 
     const { error } = await db.from('lego_wantlist').insert([{
         set_num: currentSet.set_num,
@@ -1539,7 +1539,7 @@ async function saveToWantList() {
     if (error) { showToast("Database Error: " + error.message, 'error'); }
     else {
         wantlistSetNums.add(currentSet.set_num); // Update presence cache instantly
-        showToast("Added to want list!", 'success');
+        showToast("Added to wish list!", 'success');
         renderSearchResult(currentSet); // Refresh to show badge
     }
 }
@@ -1574,7 +1574,7 @@ async function loadWantlist() {
     }
 
     if (error) {
-        document.getElementById('collection-list').innerHTML = '<li>Error loading want list.</li>';
+        document.getElementById('collection-list').innerHTML = '<li>Error loading wish list.</li>';
         return;
     }
 
@@ -1638,7 +1638,7 @@ function renderWantlist(data) {
         if (total === 0) {
             countEl.innerHTML = '';
         } else if (showing === total) {
-            countEl.innerHTML = `> <span>${total}</span>&nbsp;set${total !== 1 ? 's' : ''} on want list`;
+            countEl.innerHTML = `> <span>${total}</span>&nbsp;set${total !== 1 ? 's' : ''} on wish list`;
         } else {
             countEl.innerHTML = `> Showing&nbsp;<span>${showing}</span>&nbsp;of&nbsp;<span>${total}</span>&nbsp;sets`;
         }
@@ -1845,7 +1845,7 @@ async function confirmMoveToCollection(wantlistId) {
 
     const { data: existing } = await db.from('lego_collection').select('id').eq('set_num', item.set_num).limit(1);
     if (existing && existing.length > 0) {
-        showToast(`"${item.name}" is already in your collection — removing from want list.`, 'warning');
+        showToast(`"${item.name}" is already in your collection — removing from wish list.`, 'warning');
     } else {
         const { error } = await db.from('lego_collection').insert([{
             set_num: item.set_num, name: item.name, img_url: item.img_url, year: item.year, theme: item.theme,
@@ -1856,7 +1856,7 @@ async function confirmMoveToCollection(wantlistId) {
 
     const { error: deleteError } = await db.from('lego_wantlist').delete().eq('id', wantlistId);
     if (deleteError) {
-        showToast("Moved to collection, but failed to remove from want list: " + deleteError.message, 'warning');
+        showToast("Moved to collection, but failed to remove from wish list: " + deleteError.message, 'warning');
     } else {
         showToast(`"${item.name}" moved to collection!`, 'success');
     }
@@ -1866,12 +1866,12 @@ async function confirmMoveToCollection(wantlistId) {
 }
 
 async function deleteFromWantlist(id) {
-    if (!confirm("Remove this set from your want list?")) return;
+    if (!confirm("Remove this set from your wish list?")) return;
     const { error } = await db.from('lego_wantlist').delete().eq('id', id);
     if (error) {
         showToast("Error removing set: " + error.message, 'error');
     } else {
-        showToast("Set removed from want list.", 'info');
+        showToast("Set removed from wish list.", 'info');
         // Update cache in-place — no need to re-fetch all data from Supabase
         wantlistCache = wantlistCache.filter(i => i.id !== id);
         populateFilterDropdowns(wantlistCache);
@@ -2249,12 +2249,12 @@ function renderSetOfTheDay(set) {
                     </div>
                     <div style="font-size:0.72em;color:#443300;letter-spacing:1px;margin-bottom:14px;">${set.set_num}</div>
                     ${inCollection ? '<span class="presence-badge presence-badge--collection" style="margin-right:6px;">✓ IN COLLECTION</span>' : ''}
-                    ${inWantlist   ? '<span class="presence-badge presence-badge--wantlist">♥ IN WANT LIST</span>' : ''}
+                    ${inWantlist   ? '<span class="presence-badge presence-badge--wantlist">♥ IN WISH LIST</span>' : ''}
                 </div>
                 <div class="sotd-actions" style="margin-top:14px;">
                     <button class="sotd-btn primary" onclick="selectSotdSet('${set.set_num}', ${set.theme_id})">VIEW SET</button>
                     <button class="sotd-btn" onclick="sotdSaveToCollection('${set.set_num}', ${set.theme_id})">+ COLLECT</button>
-                    <button class="sotd-btn" onclick="sotdSaveToWantlist('${set.set_num}', ${set.theme_id})">♥ WANT</button>
+                    <button class="sotd-btn" onclick="sotdSaveToWantlist('${set.set_num}', ${set.theme_id})">♥ WISH</button>
                 </div>
             </div>
         </div>
