@@ -433,7 +433,7 @@
         </div>
         <div class="section-title" style="margin-top:16px;margin-bottom:12px;">> VALUE BY THEME <span id="value-theme-label"></span></div>
         <div class="bar-chart bar-chart--wide" id="value-theme-chart"><div class="stats-loading">Loading</div></div>
-        <div class="section-title" style="margin-top:16px;margin-bottom:12px;">> TOP 10 SETS BY RETAIL VALUE</div>
+        <div class="section-title" style="margin-top:16px;margin-bottom:12px;">> TOP 10 SETS BY MARKET VALUE</div>
         <div id="value-top-sets"><div class="stats-loading">Loading</div></div>
     </div>
 
@@ -695,20 +695,20 @@
         `;
 
         // ── Value by Theme bar chart ──
-        const themeRetail = {};
+        const themeMarket = {};
         col.forEach(i => {
             if (!i.theme) return;
-            const price = retailPriceCache[i.set_num];
+            const price = i.market_value;
             if (price == null) return;
-            themeRetail[i.theme] = (themeRetail[i.theme] || 0) + price;
+            themeMarket[i.theme] = (themeMarket[i.theme] || 0) + Number(price);
         });
-        const sortedThemes = Object.entries(themeRetail).sort((a,b) => b[1]-a[1]).slice(0, 10);
+        const sortedThemes = Object.entries(themeMarket).sort((a,b) => b[1]-a[1]).slice(0, 10);
         const maxVal = sortedThemes[0]?.[1] || 1;
         const colors = ['', 'cyan', 'magenta', 'amber', 'purple', 'red', '', 'cyan', 'magenta', 'amber'];
-        document.getElementById('value-theme-label').textContent = `top ${sortedThemes.length} by retail price`;
+        document.getElementById('value-theme-label').textContent = `top ${sortedThemes.length} by market value`;
         document.getElementById('value-theme-chart').innerHTML = sortedThemes.length
             ? sortedThemes.map(([theme, val], i) => `
-                <div class="bar-row" data-tip="${theme}: ${fmtMoney(val)} retail">
+                <div class="bar-row" data-tip="${theme}: ${fmtMoney(val)} market value">
                     <div class="bar-label">${theme}</div>
                     <div class="bar-track">
                         <div class="bar-fill ${colors[i]}" style="width:${(val/maxVal*100).toFixed(1)}%;animation-delay:${i*40}ms"></div>
@@ -716,21 +716,22 @@
                     <div class="bar-count">${fmtMoney(val)}</div>
                 </div>
             `).join('')
-            : '<div class="stats-loading">No retail price data available</div>';
+            : '<div class="stats-loading">No market value data available</div>';
 
-        // ── Top 10 sets by retail value ──
-        const setsWithRetail = col
-            .map(i => ({ ...i, retailPrice: retailPriceCache[i.set_num] }))
-            .filter(i => i.retailPrice != null)
-            .sort((a,b) => b.retailPrice - a.retailPrice)
+        // ── Top 10 sets by market value ──
+        const setsWithMarket = col
+            .filter(i => i.market_value != null)
+            .sort((a,b) => Number(b.market_value) - Number(a.market_value))
             .slice(0, 10);
 
-        document.getElementById('value-top-sets').innerHTML = setsWithRetail.length
-            ? setsWithRetail.map((item, idx) => {
-                const diff = item.price_paid != null ? item.retailPrice - Number(item.price_paid) : null;
+        document.getElementById('value-top-sets').innerHTML = setsWithMarket.length
+            ? setsWithMarket.map((item, idx) => {
+                const marketVal = Number(item.market_value);
+                const diff = item.price_paid != null ? marketVal - Number(item.price_paid) : null;
                 const diffHtml = diff != null
                     ? `<span style="font-family:var(--mono);font-size:0.68em;margin-left:8px;color:${diff >= 0 ? 'var(--green)' : 'var(--red)'};">${diff >= 0 ? '+' : ''}$${diff.toFixed(2)}</span>`
                     : '';
+                const retailPrice = retailPriceCache[item.set_num];
                 return `
                     <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);margin-bottom:5px;animation:fadeSlideIn 0.3s ease ${idx*40}ms both;">
                         <span style="font-family:var(--mono);font-size:0.65em;color:var(--text-muted);min-width:18px;">${idx+1}.</span>
@@ -740,14 +741,14 @@
                             <div style="font-family:var(--mono);font-size:0.65em;color:var(--text-muted);">${item.theme||'—'} · ${item.year||'—'}</div>
                         </div>
                         <div style="text-align:right;flex-shrink:0;">
-                            <div style="font-family:var(--mono);font-size:0.9em;color:var(--cyan);font-weight:700;">$${item.retailPrice.toFixed(2)}</div>
+                            <div style="font-family:var(--mono);font-size:0.9em;color:#ffaa00;font-weight:700;">$${marketVal.toFixed(2)}</div>
                             ${item.price_paid != null ? `<div style="font-family:var(--mono);font-size:0.62em;color:var(--text-muted);">paid $${Number(item.price_paid).toFixed(2)}${diffHtml}</div>` : `<div style="font-family:var(--mono);font-size:0.62em;color:var(--text-muted);">no price logged</div>`}
-                            ${item.market_value != null ? `<div style="font-family:var(--mono);font-size:0.62em;color:#ffaa00;">📈 $${Number(item.market_value).toFixed(2)} mkt</div>` : ''}
+                            ${retailPrice != null ? `<div style="font-family:var(--mono);font-size:0.62em;color:var(--cyan);">$${Number(retailPrice).toFixed(2)} retail</div>` : ''}
                         </div>
                     </div>
                 `;
             }).join('')
-            : '<div class="stats-loading">No retail price data yet</div>';
+            : '<div class="stats-loading">No market value data yet</div>';
     }
 
     // ── Boot ──────────────────────────────────────────────────
