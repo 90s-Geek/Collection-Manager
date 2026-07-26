@@ -8,7 +8,7 @@
     <link rel="icon" type="image/webp" href="images/90s_Geek_logo.webp">
     <title>90s Geek LEGO Search</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="styles.css?v=10">
+    <link rel="stylesheet" href="styles.css?v=11">
     <style>
         .search-box {
             background: var(--surface);
@@ -93,6 +93,25 @@
             gap: 0;
             align-items: stretch;
         }
+
+        /* --- SOTD skeleton (shown while the pick loads) --- */
+        .sotd-skeleton-img { width: 220px; height: 180px; flex-shrink: 0; border-radius: 0; }
+        .sotd-skeleton-info {
+            flex: 1;
+            min-width: 0;
+            padding: 20px 22px 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        .sotd-skeleton-title { height: 18px; width: 70%; }
+        .sotd-skeleton-meta-row { display: flex; gap: 16px; }
+        .sotd-skeleton-stat { width: 54px; height: 26px; }
+        .sotd-skeleton-actions { display: flex; gap: 8px; }
+        .sotd-skeleton-actions .skeleton { height: 32px; border-radius: var(--radius-sm); }
+        .sotd-skeleton-actions .skeleton:first-child { width: 120px; }
+        .sotd-skeleton-actions .skeleton:last-child { width: 150px; }
 
         .sotd-img-panel {
             flex-shrink: 0;
@@ -240,6 +259,7 @@
             .sotd-body { flex-direction: column; }
             .sotd-img-panel { width: 100%; border-right: none; border-bottom: 1px solid var(--border); border-radius: 0; }
             .sotd-img-panel img { height: 160px; }
+            .sotd-skeleton-img { width: 100%; height: 160px; }
             input { width: 100%; }
             button[type="submit"] { width: 100%; }
             .search-box form { flex-direction: column; }
@@ -255,7 +275,27 @@
     <div class="recently-added-panel">
         <span class="recently-added-title">RECENTLY ADDED</span>
         <div id="last-added-container">
-            <div style="color:#333;font-size:0.65em;letter-spacing:1px;padding:4px 2px;">LOADING...</div>
+            <div class="recently-added-skeleton-item">
+                <div class="skeleton skeleton-thumb"></div>
+                <div class="skeleton-lines">
+                    <div class="skeleton skeleton-text medium"></div>
+                    <div class="skeleton skeleton-text short"></div>
+                </div>
+            </div>
+            <div class="recently-added-skeleton-item">
+                <div class="skeleton skeleton-thumb"></div>
+                <div class="skeleton-lines">
+                    <div class="skeleton skeleton-text medium"></div>
+                    <div class="skeleton skeleton-text short"></div>
+                </div>
+            </div>
+            <div class="recently-added-skeleton-item">
+                <div class="skeleton skeleton-thumb"></div>
+                <div class="skeleton-lines">
+                    <div class="skeleton skeleton-text medium"></div>
+                    <div class="skeleton skeleton-text short"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -281,7 +321,21 @@
             <span class="sotd-header-label">⚄ Set of the Day <span id="sotd-date"></span></span>
         </div>
         <div id="sotd-container">
-            <div style="padding:30px 20px;color:#333;font-size:0.8em;letter-spacing:2px;">LOADING...</div>
+            <div class="sotd-body">
+                <div class="skeleton sotd-skeleton-img"></div>
+                <div class="sotd-skeleton-info">
+                    <div class="skeleton skeleton-text sotd-skeleton-title"></div>
+                    <div class="sotd-skeleton-meta-row">
+                        <div class="skeleton sotd-skeleton-stat"></div>
+                        <div class="skeleton sotd-skeleton-stat"></div>
+                        <div class="skeleton sotd-skeleton-stat"></div>
+                    </div>
+                    <div class="sotd-skeleton-actions">
+                        <div class="skeleton"></div>
+                        <div class="skeleton"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
