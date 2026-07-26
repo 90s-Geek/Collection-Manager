@@ -19,6 +19,8 @@ document.querySelectorAll('.nav a, .logo').forEach(el => {
         const href = a.getAttribute('href');
         if (!href || href.startsWith('#') || a.target === '_blank' || a.classList.contains('active')) return;
         e.preventDefault();
+        const logoImg = a.querySelector('.logo');
+        if (logoImg) logoImg.style.animation = 'none'; // stop hover glitch so it doesn't fight the fade
         document.body.classList.add('page-fade-out');
         setTimeout(() => { window.location.href = href; }, 150);
     });
@@ -302,6 +304,22 @@ async function fetchTheme(id) {
     return themeCache[id];
 }
 
+// Keyed by part_cat_id → category name (used by Part of the Day)
+const partCategoryCache = {};
+async function fetchPartCategory(id) {
+    if (partCategoryCache[id]) return partCategoryCache[id];
+    try {
+        const r = await fetch(`https://rebrickable.com/api/v3/lego/part_categories/${id}/`, {
+            headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
+        });
+        const t = await r.json();
+        partCategoryCache[id] = t.name || "Unknown";
+    } catch {
+        partCategoryCache[id] = "Unknown";
+    }
+    return partCategoryCache[id];
+}
+
 // --- Controls Panel Toggle ---
 function toggleControls() {
     const title = document.getElementById('controls-toggle');
@@ -354,6 +372,7 @@ window.onload = () => {
             // Load SOTD after presence cache is ready so badges show correctly
             loadSetOfTheDay();
         });
+        loadPartOfTheDay();
     }
     // Check if the full list exists (collection.html)
     if (document.getElementById('collection-list')) {

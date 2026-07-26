@@ -412,62 +412,34 @@ async function loadSetOfTheDay() {
     const startOfYear = new Date(now.getFullYear(), 0, 0);
     const dayOfYear = Math.floor((now - startOfYear) / 86400000);
 
-    // Fetch a page of candidates so we can filter out bulk/parts packs
-    // and still land on a real set. Use day-of-year to pick the starting
-    // page, then use day % page_size to pick which candidate within it.
-    // If an entire page happens to be excluded themes (e.g. a run of
-    // Educational/Dacta/bulk sets), step to the next page and retry
-    // rather than giving up — this can legitimately happen since sets
-    // are ordered by set_num and some ranges are theme-clustered.
-    const totalPages   = 200;
-    const pageSize      = 25;
-    const startPage     = (dayOfYear % totalPages) + 1;
-    const candidateIdx  = dayOfYear % pageSize;
-    const maxAttempts   = 5;
+    // Fetch a page of 10 candidates so we can filter out bulk/parts packs
+    // and still land on a real set. Use day-of-year to pick the page,
+    // then use day % 10 to pick which candidate within the page.
+    const totalPages = 200;
+    const page = (dayOfYear % totalPages) + 1;
+    const candidateIdx = dayOfYear % 10;
 
     try {
-        let valid = [];
-        let page = startPage;
-        let lastErr = null;
+        const res = await fetch(
+            `https://rebrickable.com/api/v3/lego/sets/?page=${page}&page_size=10&min_parts=50&ordering=set_num`,
+            { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } }
+        );
+        if (!res.ok) throw new Error('API error');
+        const data = await res.json();
+        const candidates = data.results || [];
+        if (!candidates.length) throw new Error('No sets returned');
 
-        for (let attempt = 0; attempt < maxAttempts && !valid.length; attempt++) {
-            const res = await fetch(
-                `https://rebrickable.com/api/v3/lego/sets/?page=${page}&page_size=${pageSize}&min_parts=50&ordering=set_num`,
-                { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } }
-            );
-            if (!res.ok) {
-                let bodyText = '';
-                try { bodyText = await res.text(); } catch {}
-                throw new Error(`API error ${res.status} ${res.statusText} — ${bodyText.slice(0, 200)}`);
-            }
-            const data = await res.json();
-            const candidates = data.results || [];
-            if (!candidates.length) {
-                lastErr = new Error('No sets returned (page ' + page + ')');
-                page = (page % totalPages) + 1;
-                continue;
-            }
+        // Resolve all theme names in parallel
+        await Promise.all([...new Set(candidates.map(s => s.theme_id))].map(id => fetchTheme(id)));
 
-            // Resolve all theme names in parallel
-            await Promise.all([...new Set(candidates.map(s => s.theme_id))].map(id => fetchTheme(id)));
+        // Filter out bulk/parts themes, then pick by index (wrap around if needed)
+        const valid = candidates.filter(s => !isSotdExcluded(themeCache[s.theme_id]));
+        if (!valid.length) throw new Error('No valid sets after filtering');
 
-            // Filter out bulk/parts themes
-            valid = candidates.filter(s => !isSotdExcluded(themeCache[s.theme_id]));
-            if (!valid.length) {
-                lastErr = new Error('No valid sets after filtering (page ' + page + ')');
-                page = (page % totalPages) + 1; // whole page was excluded — try the next one
-                continue;
-            }
-
-            const set = valid[candidateIdx % valid.length];
-            renderSetOfTheDay({ ...set, theme_name: themeCache[set.theme_id] || 'Unknown' });
-            return;
-        }
-
-        throw lastErr || new Error('No valid sets found after ' + maxAttempts + ' attempts');
+        const set = valid[candidateIdx % valid.length];
+        renderSetOfTheDay({ ...set, theme_name: themeCache[set.theme_id] || 'Unknown' });
     } catch (err) {
-        console.error('Set of the Day failed:', err);
-        if (container) container.innerHTML = `<span style="color:#666;font-size:0.75em;">Could not load set of the day — ${escapeHTML(err.message || String(err))}</span>`;
+        if (container) container.innerHTML = `<span style="color:#333;font-size:0.8em;">Could not load set of the day.</span>`;
     }
 }
 
@@ -517,6 +489,100 @@ function renderSetOfTheDay(set) {
         </div>
     `;
     const img = document.getElementById('sotd-img');
+    if (img) attachImgFallback(img);
+}
+
+// --- PART OF THE DAY ---
+// Same deterministic-by-date approach as Set of the Day, but pulls from
+// Rebrickable's /lego/parts/ catalog endpoint instead of /lego/sets/.
+// No pricing/collection data exists for individual parts, so this is
+// purely a showcase — it links out to the part's Rebrickable page.
+
+const POTD_EXCLUDE_CATEGORIES = [
+    'sticker', 'instructions', 'catalog', 'box', 'gear',
+    'duplo', 'primo', 'quatro', 'book'
+];
+
+function isPotdExcluded(categoryName) {
+    if (!categoryName) return false;
+    const lower = categoryName.toLowerCase();
+    return POTD_EXCLUDE_CATEGORIES.some(ex => lower.includes(ex));
+}
+
+async function loadPartOfTheDay() {
+    const container = document.getElementById('potd-container');
+    const dateLabel = document.getElementById('potd-date');
+    if (!container) return;
+
+    const now = new Date();
+    if (dateLabel) {
+        dateLabel.textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+    }
+
+    const startOfYear = new Date(now.getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((now - startOfYear) / 86400000);
+
+    // Fetch a page of 15 candidates so we can filter out parts with no
+    // image and non-brick categories (stickers, gear, etc.) and still
+    // land on a real part. Offset the candidate index from SOTD's so the
+    // two picks don't feel synced to the same day-of-year math.
+    const totalPages = 300;
+    const page = (dayOfYear % totalPages) + 1;
+    const candidateIdx = (dayOfYear + 5) % 15;
+
+    try {
+        const res = await fetch(
+            `https://rebrickable.com/api/v3/lego/parts/?page=${page}&page_size=15&ordering=part_num`,
+            { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } }
+        );
+        if (!res.ok) throw new Error('API error');
+        const data = await res.json();
+        const candidates = (data.results || []).filter(p => p.part_img_url);
+        if (!candidates.length) throw new Error('No parts returned');
+
+        // Resolve all category names in parallel
+        await Promise.all([...new Set(candidates.map(p => p.part_cat_id))].map(id => fetchPartCategory(id)));
+
+        // Filter out sticker/gear/etc. categories, then pick by index (wrap around if needed)
+        const valid = candidates.filter(p => !isPotdExcluded(partCategoryCache[p.part_cat_id]));
+        if (!valid.length) throw new Error('No valid parts after filtering');
+
+        const part = valid[candidateIdx % valid.length];
+        renderPartOfTheDay({ ...part, category_name: partCategoryCache[part.part_cat_id] || 'Unknown' });
+    } catch (err) {
+        if (container) container.innerHTML = `<span style="color:#333;font-size:0.8em;">Could not load part of the day.</span>`;
+    }
+}
+
+function renderPartOfTheDay(part) {
+    const container = document.getElementById('potd-container');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="sotd-body">
+            <div class="sotd-img-panel" onclick="window.open('${part.part_url}', '_blank')" title="Click to view on Rebrickable">
+                <img id="potd-img" src="${part.part_img_url || ''}" alt="${escapeHTML(part.name)}">
+                <span class="sotd-badge">⚉ DAILY PICK</span>
+                <span class="sotd-enlarge-hint">🔍 click to view</span>
+            </div>
+            <div class="sotd-info-panel">
+                <div>
+                    <div class="sotd-name">${escapeHTML(part.name)}</div>
+                    <div class="sotd-meta-row">
+                        <div class="sotd-meta-item">
+                            <span class="sotd-meta-val" style="font-size:0.78em;">${escapeHTML(part.category_name)}</span>
+                            <span class="sotd-meta-lbl">Category</span>
+                        </div>
+                    </div>
+                    <div style="font-size:0.72em;color:#443300;letter-spacing:1px;margin-bottom:14px;">${part.part_num}</div>
+                </div>
+                <div class="sotd-actions" style="margin-top:14px;">
+                    <a class="sotd-btn primary" href="${part.part_url}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;">VIEW ON REBRICKABLE</a>
+                </div>
+            </div>
+        </div>
+    `;
+    const img = document.getElementById('potd-img');
     if (img) attachImgFallback(img);
 }
 
