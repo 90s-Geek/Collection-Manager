@@ -412,36 +412,59 @@ async function loadSetOfTheDay() {
     const startOfYear = new Date(now.getFullYear(), 0, 0);
     const dayOfYear = Math.floor((now - startOfYear) / 86400000);
 
-    // Fetch a page of 10 candidates so we can filter out bulk/parts packs
-    // and still land on a real set. Use day-of-year to pick the page,
-    // then use day % 10 to pick which candidate within the page.
-    const totalPages = 200;
-    const page = (dayOfYear % totalPages) + 1;
-    const candidateIdx = dayOfYear % 10;
+    // Fetch a page of candidates so we can filter out bulk/parts packs
+    // and still land on a real set. Use day-of-year to pick the starting
+    // page, then use day % page_size to pick which candidate within it.
+    // If an entire page happens to be excluded themes (e.g. a run of
+    // Educational/Dacta/bulk sets), step to the next page and retry
+    // rather than giving up — this can legitimately happen since sets
+    // are ordered by set_num and some ranges are theme-clustered.
+    const totalPages   = 200;
+    const pageSize      = 25;
+    const startPage     = (dayOfYear % totalPages) + 1;
+    const candidateIdx  = dayOfYear % pageSize;
+    const maxAttempts   = 5;
 
     try {
-        const res = await fetch(
-            `https://rebrickable.com/api/v3/lego/sets/?page=${page}&page_size=10&min_parts=50&ordering=set_num`,
-            { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } }
-        );
-        if (!res.ok) {
-            let bodyText = '';
-            try { bodyText = await res.text(); } catch {}
-            throw new Error(`API error ${res.status} ${res.statusText} — ${bodyText.slice(0, 200)}`);
+        let valid = [];
+        let page = startPage;
+        let lastErr = null;
+
+        for (let attempt = 0; attempt < maxAttempts && !valid.length; attempt++) {
+            const res = await fetch(
+                `https://rebrickable.com/api/v3/lego/sets/?page=${page}&page_size=${pageSize}&min_parts=50&ordering=set_num`,
+                { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } }
+            );
+            if (!res.ok) {
+                let bodyText = '';
+                try { bodyText = await res.text(); } catch {}
+                throw new Error(`API error ${res.status} ${res.statusText} — ${bodyText.slice(0, 200)}`);
+            }
+            const data = await res.json();
+            const candidates = data.results || [];
+            if (!candidates.length) {
+                lastErr = new Error('No sets returned (page ' + page + ')');
+                page = (page % totalPages) + 1;
+                continue;
+            }
+
+            // Resolve all theme names in parallel
+            await Promise.all([...new Set(candidates.map(s => s.theme_id))].map(id => fetchTheme(id)));
+
+            // Filter out bulk/parts themes
+            valid = candidates.filter(s => !isSotdExcluded(themeCache[s.theme_id]));
+            if (!valid.length) {
+                lastErr = new Error('No valid sets after filtering (page ' + page + ')');
+                page = (page % totalPages) + 1; // whole page was excluded — try the next one
+                continue;
+            }
+
+            const set = valid[candidateIdx % valid.length];
+            renderSetOfTheDay({ ...set, theme_name: themeCache[set.theme_id] || 'Unknown' });
+            return;
         }
-        const data = await res.json();
-        const candidates = data.results || [];
-        if (!candidates.length) throw new Error('No sets returned (page ' + page + ')');
 
-        // Resolve all theme names in parallel
-        await Promise.all([...new Set(candidates.map(s => s.theme_id))].map(id => fetchTheme(id)));
-
-        // Filter out bulk/parts themes, then pick by index (wrap around if needed)
-        const valid = candidates.filter(s => !isSotdExcluded(themeCache[s.theme_id]));
-        if (!valid.length) throw new Error('No valid sets after filtering');
-
-        const set = valid[candidateIdx % valid.length];
-        renderSetOfTheDay({ ...set, theme_name: themeCache[set.theme_id] || 'Unknown' });
+        throw lastErr || new Error('No valid sets found after ' + maxAttempts + ' attempts');
     } catch (err) {
         console.error('Set of the Day failed:', err);
         if (container) container.innerHTML = `<span style="color:#666;font-size:0.75em;">Could not load set of the day — ${escapeHTML(err.message || String(err))}</span>`;
