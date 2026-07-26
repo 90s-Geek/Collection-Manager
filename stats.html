@@ -581,7 +581,7 @@
 
         document.getElementById('condition-modal-list').innerHTML = items.length
             ? items.map((item, i) => `
-                <div class="recent-item" style="animation:fadeSlideIn 0.25s ease ${Math.min(i * 20, 400)}ms both">
+                <div class="recent-item" style="animation:fadeSlideIn 0.25s ease ${Math.min(i * 20, 400)}ms both;cursor:pointer;" onclick="window.location.href='collection.html?edit=${item.id}'" title="Click to edit this set">
                     <img src="${item.img_url || ''}" alt="${item.name}"
                          onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'38\\' height=\\'30\\'><rect width=\\'38\\' height=\\'30\\' fill=\\'%23111\\'/></svg>'">
                     <div class="recent-item-name">${item.name}</div>

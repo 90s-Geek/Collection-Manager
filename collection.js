@@ -38,6 +38,16 @@ async function loadCollection() {
     populateFilterDropdowns(collectionCache);
     restoreFilterState();
     applyControls();
+
+    // Deep link support: ?edit=<id> auto-opens that item's edit modal
+    // (used by the stats page's "click a set to edit it" links)
+    const editId = new URLSearchParams(window.location.search).get('edit');
+    if (editId) {
+        const item = collectionCache.find(i => String(i.id) === editId);
+        if (item) showModal(item);
+        // Clean the URL so refreshing/navigating back doesn't reopen the modal
+        history.replaceState(null, '', window.location.pathname);
+    }
 }
 
 function applyControls() {
