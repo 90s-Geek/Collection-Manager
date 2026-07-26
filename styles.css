@@ -97,6 +97,12 @@ body {
     margin: 70px 40px 40px calc(var(--sidebar-width) + 40px);
     box-sizing: border-box;
     line-height: 1.5;
+    opacity: 1;
+    transition: opacity 0.15s ease;
+}
+
+body.page-fade-out {
+    opacity: 0;
 }
 
 body::before {

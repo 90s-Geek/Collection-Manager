@@ -11,6 +11,17 @@ document.querySelectorAll('.nav a').forEach(a => {
     }
 });
 
+// --- Page fade transition on nav click ---
+document.querySelectorAll('.nav a').forEach(a => {
+    a.addEventListener('click', (e) => {
+        const href = a.getAttribute('href');
+        if (!href || href.startsWith('#') || a.target === '_blank' || a.classList.contains('active')) return;
+        e.preventDefault();
+        document.body.classList.add('page-fade-out');
+        setTimeout(() => { window.location.href = href; }, 150);
+    });
+});
+
 // --- CONFIGURATION ---
 const REBRICKABLE_API_KEY = '05a143eb0b36a4439e8118910912d050';
 const SUPABASE_URL = 'https://sgmibyooymrocvojchxu.supabase.co';
@@ -337,14 +348,10 @@ window.onload = () => {
     // Check if the dashboard container exists (index.html)
     if (document.getElementById('last-added-container')) {
         loadLastAdded();
-        loadPresenceCache()
-            .catch(err => console.error('Presence cache failed:', err))
-            .finally(() => {
-                // Load SOTD regardless of presence cache outcome — badges just
-                // won't show if the cache genuinely failed, but SOTD itself
-                // should never get stuck behind an unrelated query failure.
-                loadSetOfTheDay();
-            });
+        loadPresenceCache().then(() => {
+            // Load SOTD after presence cache is ready so badges show correctly
+            loadSetOfTheDay();
+        });
     }
     // Check if the full list exists (collection.html)
     if (document.getElementById('collection-list')) {
