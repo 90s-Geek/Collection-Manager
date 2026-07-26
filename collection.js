@@ -458,7 +458,7 @@ async function bulkApplyCondition() {
     applyControls();
 }
 
-// --- WANT LIST ---
+// --- WISH LIST ---
 
 function closeImportModal(e) {
     const modal = document.getElementById('import-modal');

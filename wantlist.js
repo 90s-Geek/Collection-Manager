@@ -1,7 +1,7 @@
 // ============================================================
 // wantlist.js — wantlist.html only
-// Want list load/filter/render, drag-to-reorder, move-to-collection,
-// and want list CSV export.
+// Wish list load/filter/render, drag-to-reorder, move-to-collection,
+// and wish list CSV export.
 // Depends on core.js (must be loaded first).
 // ============================================================
 let dragSrcId = null; // ID of item being dragged
@@ -38,7 +38,7 @@ async function loadWantlist() {
     }
 
     if (error) {
-        document.getElementById('collection-list').innerHTML = '<li>Error loading want list.</li>';
+        document.getElementById('collection-list').innerHTML = '<li>Error loading wish list.</li>';
         return;
     }
 
@@ -102,7 +102,7 @@ function renderWantlist(data) {
         if (total === 0) {
             countEl.innerHTML = '';
         } else if (showing === total) {
-            countEl.innerHTML = `> <span>${total}</span>&nbsp;set${total !== 1 ? 's' : ''} on want list`;
+            countEl.innerHTML = `> <span>${total}</span>&nbsp;set${total !== 1 ? 's' : ''} on wish list`;
         } else {
             countEl.innerHTML = `> Showing&nbsp;<span>${showing}</span>&nbsp;of&nbsp;<span>${total}</span>&nbsp;sets`;
         }
@@ -310,7 +310,7 @@ async function confirmMoveToCollection(wantlistId) {
 
     const { data: existing } = await db.from('lego_collection').select('id').eq('set_num', item.set_num).limit(1);
     if (existing && existing.length > 0) {
-        showToast(`"${item.name}" is already in your collection — removing from want list.`, 'warning');
+        showToast(`"${item.name}" is already in your collection — removing from wish list.`, 'warning');
     } else {
         const { error } = await db.from('lego_collection').insert([{
             set_num: item.set_num, name: item.name, img_url: item.img_url, year: item.year, theme: item.theme,
@@ -321,7 +321,7 @@ async function confirmMoveToCollection(wantlistId) {
 
     const { error: deleteError } = await db.from('lego_wantlist').delete().eq('id', wantlistId);
     if (deleteError) {
-        showToast("Moved to collection, but failed to remove from want list: " + deleteError.message, 'warning');
+        showToast("Moved to collection, but failed to remove from wish list: " + deleteError.message, 'warning');
     } else {
         showToast(`"${item.name}" moved to collection!`, 'success');
     }
@@ -331,12 +331,12 @@ async function confirmMoveToCollection(wantlistId) {
 }
 
 async function deleteFromWantlist(id) {
-    if (!confirm("Remove this set from your want list?")) return;
+    if (!confirm("Remove this set from your wish list?")) return;
     const { error } = await db.from('lego_wantlist').delete().eq('id', id);
     if (error) {
         showToast("Error removing set: " + error.message, 'error');
     } else {
-        showToast("Set removed from want list.", 'info');
+        showToast("Set removed from wish list.", 'info');
         // Update cache in-place — no need to re-fetch all data from Supabase
         wantlistCache = wantlistCache.filter(i => i.id !== id);
         populateFilterDropdowns(wantlistCache);

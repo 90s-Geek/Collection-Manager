@@ -388,8 +388,8 @@
 
     <div class="nav">
         <a href="index.html">SEARCH</a>
-        <a href="collection.html">LEGO</a>
-        <a href="wantlist.html">LEGO WANTS</a>
+        <a href="collection.html">COLLECTION</a>
+        <a href="wantlist.html">WISH LIST</a>
     </div>
     <div id="toast-container"></div>
 
@@ -501,7 +501,7 @@
             { val: sealed,          label: 'Sealed Sets',        color: 'magenta' },
             { val: earliest,        label: 'Oldest Year',        color: 'purple' },
             { val: newest,          label: 'Newest Year',        color: 'green' },
-            { val: fmt(wl.length),  label: 'On Want List',       color: 'amber' },
+            { val: fmt(wl.length),  label: 'On Wish List',       color: 'amber' },
         ];
 
         document.getElementById('kpi-grid').innerHTML = kpis.map(k => `
