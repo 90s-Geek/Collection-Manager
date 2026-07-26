@@ -11,8 +11,10 @@ document.querySelectorAll('.nav a').forEach(a => {
     }
 });
 
-// --- Page fade transition on nav click ---
-document.querySelectorAll('.nav a').forEach(a => {
+// --- Page fade transition on nav / logo click ---
+document.querySelectorAll('.nav a, .logo').forEach(el => {
+    const a = el.matches('a') ? el : el.closest('a');
+    if (!a) return;
     a.addEventListener('click', (e) => {
         const href = a.getAttribute('href');
         if (!href || href.startsWith('#') || a.target === '_blank' || a.classList.contains('active')) return;
