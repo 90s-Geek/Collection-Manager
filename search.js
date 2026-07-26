@@ -337,7 +337,7 @@ async function loadLastAdded() {
     const container = document.getElementById('last-added-container');
     if (!container) return;
     const { data, error } = await db.from('lego_collection')
-        .select('*').order('created_at', { ascending: false }).limit(3);
+        .select('*').order('created_at', { ascending: false }).limit(5);
 
     if (error || !data || data.length === 0) {
         container.innerHTML = "<div style='color:#333;font-size:0.65em;padding:4px 2px;'>No sets yet.</div>";
