@@ -348,34 +348,6 @@
             color: var(--text-muted);
             margin-top: 3px;
         }
-        .value-loading-bar {
-            width: 100%;
-            height: 3px;
-            background: var(--surface3);
-            border-radius: 2px;
-            margin-bottom: 16px;
-            overflow: hidden;
-            position: relative;
-        }
-        .value-loading-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, transparent, var(--green), transparent);
-            border-radius: 2px;
-            animation: scanAnim 1.4s ease-in-out infinite;
-            width: 40%;
-        }
-        @keyframes scanAnim {
-            0%   { transform: translateX(-100%); }
-            100% { transform: translateX(350%); }
-        }
-        .value-coverage-note {
-            font-family: var(--mono);
-            font-size: 0.64em;
-            color: var(--text-muted);
-            text-align: center;
-            margin-top: 8px;
-            letter-spacing: 0.5px;
-        }
         .value-gain { color: var(--green); }
         .value-loss { color: var(--red); }
         .value-neutral { color: var(--text-dim); }
@@ -424,16 +396,12 @@
     <!-- Value & Price Tracking -->
     <div class="stats-section" id="value-section">
         <div class="section-title">> COLLECTION VALUE <span id="value-coverage-label"></span></div>
-        <div id="value-loading-wrap" style="display:none;">
-            <div class="value-loading-bar"><div class="value-loading-bar-fill"></div></div>
-            <div class="value-coverage-note" id="value-loading-note">Fetching retail prices from Brickset...</div>
-        </div>
         <div id="value-kpi-grid" class="value-kpi-grid">
             <div class="stats-loading">Loading</div>
         </div>
         <div class="section-title" style="margin-top:16px;margin-bottom:12px;">> VALUE BY THEME <span id="value-theme-label"></span></div>
         <div class="bar-chart bar-chart--wide" id="value-theme-chart"><div class="stats-loading">Loading</div></div>
-        <div class="section-title" style="margin-top:16px;margin-bottom:12px;">> TOP 10 SETS BY RETAIL VALUE</div>
+        <div class="section-title" style="margin-top:16px;margin-bottom:12px;">> TOP 10 SETS BY MARKET VALUE</div>
         <div id="value-top-sets"><div class="stats-loading">Loading</div></div>
     </div>
 
@@ -484,7 +452,7 @@
         renderYearChart(col);
         renderConditionChart(col);
         renderRecentList(col);
-        renderValueStats(col); // async — fetches retail prices in background
+        renderValueStats(col); // synchronous — market_value is already in the loaded collection data
     }
 
     // ── KPIs ──────────────────────────────────────────────────
@@ -608,58 +576,29 @@
     }
 
     // ── Value & Price Tracking ────────────────────────────────
-    async function renderValueStats(col) {
+    function renderValueStats(col) {
         if (!col.length) {
             document.getElementById('value-kpi-grid').innerHTML = '<div class="stats-loading">No collection data</div>';
             return;
         }
 
-        // Show loading indicator
-        document.getElementById('value-loading-wrap').style.display = 'block';
-        document.getElementById('value-kpi-grid').innerHTML = '';
-
-        // Batch fetch retail prices for all sets
-        const setNums = col.map(i => i.set_num).filter(Boolean);
-        let fetched = 0;
-        const updateNote = () => {
-            const noteEl = document.getElementById('value-loading-note');
-            if (noteEl) noteEl.textContent = `Fetching retail prices... ${fetched}/${setNums.length}`;
-        };
-
-        await Promise.allSettled(setNums.map(async n => {
-            await fetchRetailPrice(n);
-            fetched++;
-            updateNote();
-        }));
-
-        // Hide loading
-        document.getElementById('value-loading-wrap').style.display = 'none';
-
-        // ── Compute KPIs ──
+        // ── Compute KPIs (all from data already in `col` — no fetch needed) ──
         const withPaid    = col.filter(i => i.price_paid != null);
-        const withRetail  = col.filter(i => retailPriceCache[i.set_num] != null);
         const withMarket  = col.filter(i => i.market_value != null);
         const totalPaid   = withPaid.reduce((s, i) => s + Number(i.price_paid), 0);
-        const totalRetail = withRetail.reduce((s, i) => s + (retailPriceCache[i.set_num] || 0), 0);
         const totalMarket = withMarket.reduce((s, i) => s + Number(i.market_value), 0);
-        // Gain/loss vs retail — only for sets where both prices known
-        const overlap     = col.filter(i => i.price_paid != null && retailPriceCache[i.set_num] != null);
-        const overlapPaid = overlap.reduce((s, i) => s + Number(i.price_paid), 0);
-        const overlapRetail = overlap.reduce((s, i) => s + (retailPriceCache[i.set_num] || 0), 0);
-        const gainLoss    = overlapRetail - overlapPaid;
-        const gainPct     = overlapPaid > 0 ? ((gainLoss / overlapPaid) * 100).toFixed(1) : null;
-        // Gain/loss vs market — only for sets where both prices known
-        const overlapMkt  = col.filter(i => i.price_paid != null && i.market_value != null);
+        // Gain/loss vs market — only for sets where both price paid and market value are known
+        const overlapMkt     = col.filter(i => i.price_paid != null && i.market_value != null);
         const overlapMktPaid = overlapMkt.reduce((s, i) => s + Number(i.price_paid), 0);
         const overlapMktVal  = overlapMkt.reduce((s, i) => s + Number(i.market_value), 0);
-        const gainLossMkt = overlapMktVal - overlapMktPaid;
-        const gainPctMkt  = overlapMktPaid > 0 ? ((gainLossMkt / overlapMktPaid) * 100).toFixed(1) : null;
+        const gainLossMkt    = overlapMktVal - overlapMktPaid;
+        const gainPctMkt     = overlapMktPaid > 0 ? ((gainLossMkt / overlapMktPaid) * 100).toFixed(1) : null;
 
         const fmtMoney = v => v >= 1000 ? `$${(v/1000).toFixed(1)}k` : `$${v.toFixed(0)}`;
-        const coveragePct = setNums.length ? Math.round((withRetail.length / setNums.length) * 100) : 0;
+        const coveragePct = col.length ? Math.round((withMarket.length / col.length) * 100) : 0;
 
         document.getElementById('value-coverage-label').textContent =
-            `${withRetail.length}/${col.length} sets with retail data (${coveragePct}%)`;
+            `${withMarket.length}/${col.length} sets with market value (${coveragePct}%)`;
 
         const gainClassMkt = gainLossMkt > 0 ? 'value-gain' : gainLossMkt < 0 ? 'value-loss' : 'value-neutral';
         const gainSignMkt  = gainLossMkt >= 0 ? '+' : '';
@@ -669,16 +608,6 @@
                 <div class="value-kpi-val" style="color:var(--green)">${withPaid.length > 0 ? fmtMoney(totalPaid) : '—'}</div>
                 <div class="value-kpi-label">Total Paid</div>
                 <div class="value-kpi-sub">${withPaid.length} set${withPaid.length !== 1 ? 's' : ''} logged</div>
-            </div>
-            <div class="value-kpi">
-                <div class="value-kpi-val" style="color:var(--cyan)">${withRetail.length > 0 ? fmtMoney(totalRetail) : '—'}</div>
-                <div class="value-kpi-label">Est. Retail Value</div>
-                <div class="value-kpi-sub">${withRetail.length} sets w/ data</div>
-            </div>
-            <div class="value-kpi">
-                <div class="value-kpi-val ${gainClass}">${overlap.length > 0 ? `${gainSign}${fmtMoney(gainLoss)}` : '—'}</div>
-                <div class="value-kpi-label">Gain / Loss vs Retail</div>
-                <div class="value-kpi-sub">${gainPct != null ? `${gainSign}${gainPct}% vs paid` : 'Log prices to track'}</div>
             </div>
             <div class="value-kpi">
                 <div class="value-kpi-val" style="color:#ffaa00">${withMarket.length > 0 ? fmtMoney(totalMarket) : '—'}</div>
@@ -693,20 +622,20 @@
         `;
 
         // ── Value by Theme bar chart ──
-        const themeRetail = {};
+        const themeMarket = {};
         col.forEach(i => {
             if (!i.theme) return;
-            const price = retailPriceCache[i.set_num];
-            if (price == null) return;
-            themeRetail[i.theme] = (themeRetail[i.theme] || 0) + price;
+            const val = i.market_value;
+            if (val == null) return;
+            themeMarket[i.theme] = (themeMarket[i.theme] || 0) + Number(val);
         });
-        const sortedThemes = Object.entries(themeRetail).sort((a,b) => b[1]-a[1]).slice(0, 10);
+        const sortedThemes = Object.entries(themeMarket).sort((a,b) => b[1]-a[1]).slice(0, 10);
         const maxVal = sortedThemes[0]?.[1] || 1;
         const colors = ['', 'cyan', 'magenta', 'amber', 'purple', 'red', '', 'cyan', 'magenta', 'amber'];
-        document.getElementById('value-theme-label').textContent = `top ${sortedThemes.length} by retail price`;
+        document.getElementById('value-theme-label').textContent = `top ${sortedThemes.length} by market value`;
         document.getElementById('value-theme-chart').innerHTML = sortedThemes.length
             ? sortedThemes.map(([theme, val], i) => `
-                <div class="bar-row" data-tip="${theme}: ${fmtMoney(val)} retail">
+                <div class="bar-row" data-tip="${theme}: ${fmtMoney(val)} market value">
                     <div class="bar-label">${theme}</div>
                     <div class="bar-track">
                         <div class="bar-fill ${colors[i]}" style="width:${(val/maxVal*100).toFixed(1)}%;animation-delay:${i*40}ms"></div>
@@ -714,18 +643,18 @@
                     <div class="bar-count">${fmtMoney(val)}</div>
                 </div>
             `).join('')
-            : '<div class="stats-loading">No retail price data available</div>';
+            : '<div class="stats-loading">No market value data logged yet</div>';
 
-        // ── Top 10 sets by retail value ──
-        const setsWithRetail = col
-            .map(i => ({ ...i, retailPrice: retailPriceCache[i.set_num] }))
-            .filter(i => i.retailPrice != null)
-            .sort((a,b) => b.retailPrice - a.retailPrice)
+        // ── Top 10 sets by market value ──
+        const setsWithMarket = col
+            .filter(i => i.market_value != null)
+            .sort((a,b) => Number(b.market_value) - Number(a.market_value))
             .slice(0, 10);
 
-        document.getElementById('value-top-sets').innerHTML = setsWithRetail.length
-            ? setsWithRetail.map((item, idx) => {
-                const diff = item.price_paid != null ? item.retailPrice - Number(item.price_paid) : null;
+        document.getElementById('value-top-sets').innerHTML = setsWithMarket.length
+            ? setsWithMarket.map((item, idx) => {
+                const marketVal = Number(item.market_value);
+                const diff = item.price_paid != null ? marketVal - Number(item.price_paid) : null;
                 const diffHtml = diff != null
                     ? `<span style="font-family:var(--mono);font-size:0.68em;margin-left:8px;color:${diff >= 0 ? 'var(--green)' : 'var(--red)'};">${diff >= 0 ? '+' : ''}$${diff.toFixed(2)}</span>`
                     : '';
@@ -738,14 +667,13 @@
                             <div style="font-family:var(--mono);font-size:0.65em;color:var(--text-muted);">${item.theme||'—'} · ${item.year||'—'}</div>
                         </div>
                         <div style="text-align:right;flex-shrink:0;">
-                            <div style="font-family:var(--mono);font-size:0.9em;color:var(--cyan);font-weight:700;">$${item.retailPrice.toFixed(2)}</div>
+                            <div style="font-family:var(--mono);font-size:0.9em;color:#ffaa00;font-weight:700;">$${marketVal.toFixed(2)}</div>
                             ${item.price_paid != null ? `<div style="font-family:var(--mono);font-size:0.62em;color:var(--text-muted);">paid $${Number(item.price_paid).toFixed(2)}${diffHtml}</div>` : `<div style="font-family:var(--mono);font-size:0.62em;color:var(--text-muted);">no price logged</div>`}
-                            ${item.market_value != null ? `<div style="font-family:var(--mono);font-size:0.62em;color:#ffaa00;">📈 $${Number(item.market_value).toFixed(2)} mkt</div>` : ''}
                         </div>
                     </div>
                 `;
             }).join('')
-            : '<div class="stats-loading">No retail price data yet</div>';
+            : '<div class="stats-loading">No market value data logged yet</div>';
     }
 
     // ── Boot ──────────────────────────────────────────────────
