@@ -424,10 +424,14 @@ async function loadSetOfTheDay() {
             `https://rebrickable.com/api/v3/lego/sets/?page=${page}&page_size=10&min_parts=50&ordering=set_num`,
             { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } }
         );
-        if (!res.ok) throw new Error('API error');
+        if (!res.ok) {
+            let bodyText = '';
+            try { bodyText = await res.text(); } catch {}
+            throw new Error(`API error ${res.status} ${res.statusText} — ${bodyText.slice(0, 200)}`);
+        }
         const data = await res.json();
         const candidates = data.results || [];
-        if (!candidates.length) throw new Error('No sets returned');
+        if (!candidates.length) throw new Error('No sets returned (page ' + page + ')');
 
         // Resolve all theme names in parallel
         await Promise.all([...new Set(candidates.map(s => s.theme_id))].map(id => fetchTheme(id)));
@@ -439,7 +443,8 @@ async function loadSetOfTheDay() {
         const set = valid[candidateIdx % valid.length];
         renderSetOfTheDay({ ...set, theme_name: themeCache[set.theme_id] || 'Unknown' });
     } catch (err) {
-        if (container) container.innerHTML = `<span style="color:#333;font-size:0.8em;">Could not load set of the day.</span>`;
+        console.error('Set of the Day failed:', err);
+        if (container) container.innerHTML = `<span style="color:#666;font-size:0.75em;">Could not load set of the day — ${escapeHTML(err.message || String(err))}</span>`;
     }
 }
 
