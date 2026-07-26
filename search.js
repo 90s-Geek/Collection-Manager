@@ -415,32 +415,42 @@ async function loadSetOfTheDay() {
     // Fetch a page of 10 candidates so we can filter out bulk/parts packs
     // and still land on a real set. Use day-of-year to pick the page,
     // then use day % 10 to pick which candidate within the page.
+    // If a page happens to be dominated by excluded themes, retry on a
+    // few nearby pages before giving up.
     const totalPages = 200;
-    const page = (dayOfYear % totalPages) + 1;
     const candidateIdx = dayOfYear % 10;
+    const pageOffsets = [0, 50, 100];
 
-    try {
-        const res = await fetch(
-            `https://rebrickable.com/api/v3/lego/sets/?page=${page}&page_size=10&min_parts=50&ordering=set_num`,
-            { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } }
-        );
-        if (!res.ok) throw new Error('API error');
-        const data = await res.json();
-        const candidates = data.results || [];
-        if (!candidates.length) throw new Error('No sets returned');
+    let lastErr = null;
+    for (const offset of pageOffsets) {
+        const page = ((dayOfYear + offset) % totalPages) + 1;
+        try {
+            const res = await fetch(
+                `https://rebrickable.com/api/v3/lego/sets/?page=${page}&page_size=10&min_parts=50&ordering=set_num`,
+                { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } }
+            );
+            if (!res.ok) throw new Error(`API error ${res.status}`);
+            const data = await res.json();
+            const candidates = data.results || [];
+            if (!candidates.length) throw new Error('No sets returned');
 
-        // Resolve all theme names in parallel
-        await Promise.all([...new Set(candidates.map(s => s.theme_id))].map(id => fetchTheme(id)));
+            // Resolve all theme names in parallel
+            await Promise.all([...new Set(candidates.map(s => s.theme_id))].map(id => fetchTheme(id)));
 
-        // Filter out bulk/parts themes, then pick by index (wrap around if needed)
-        const valid = candidates.filter(s => !isSotdExcluded(themeCache[s.theme_id]));
-        if (!valid.length) throw new Error('No valid sets after filtering');
+            // Filter out bulk/parts themes, then pick by index (wrap around if needed)
+            const valid = candidates.filter(s => !isSotdExcluded(themeCache[s.theme_id]));
+            if (!valid.length) throw new Error('No valid sets after filtering');
 
-        const set = valid[candidateIdx % valid.length];
-        renderSetOfTheDay({ ...set, theme_name: themeCache[set.theme_id] || 'Unknown' });
-    } catch (err) {
-        if (container) container.innerHTML = `<span style="color:#333;font-size:0.8em;">Could not load set of the day.</span>`;
+            const set = valid[candidateIdx % valid.length];
+            renderSetOfTheDay({ ...set, theme_name: themeCache[set.theme_id] || 'Unknown' });
+            return;
+        } catch (err) {
+            lastErr = err;
+        }
     }
+
+    console.error('Set of the Day failed:', lastErr);
+    if (container) container.innerHTML = `<span style="color:#333;font-size:0.8em;">Could not load set of the day.</span>`;
 }
 
 function renderSetOfTheDay(set) {
@@ -526,32 +536,42 @@ async function loadPartOfTheDay() {
     // image and non-brick categories (stickers, gear, etc.) and still
     // land on a real part. Offset the candidate index from SOTD's so the
     // two picks don't feel synced to the same day-of-year math.
+    // If a page happens to be dominated by excluded categories or missing
+    // images, retry on a few nearby pages before giving up.
     const totalPages = 300;
-    const page = (dayOfYear % totalPages) + 1;
     const candidateIdx = (dayOfYear + 5) % 15;
+    const pageOffsets = [0, 75, 150];
 
-    try {
-        const res = await fetch(
-            `https://rebrickable.com/api/v3/lego/parts/?page=${page}&page_size=15&ordering=part_num`,
-            { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } }
-        );
-        if (!res.ok) throw new Error('API error');
-        const data = await res.json();
-        const candidates = (data.results || []).filter(p => p.part_img_url);
-        if (!candidates.length) throw new Error('No parts returned');
+    let lastErr = null;
+    for (const offset of pageOffsets) {
+        const page = ((dayOfYear + offset) % totalPages) + 1;
+        try {
+            const res = await fetch(
+                `https://rebrickable.com/api/v3/lego/parts/?page=${page}&page_size=15&ordering=part_num`,
+                { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } }
+            );
+            if (!res.ok) throw new Error(`API error ${res.status}`);
+            const data = await res.json();
+            const candidates = (data.results || []).filter(p => p.part_img_url);
+            if (!candidates.length) throw new Error('No parts returned');
 
-        // Resolve all category names in parallel
-        await Promise.all([...new Set(candidates.map(p => p.part_cat_id))].map(id => fetchPartCategory(id)));
+            // Resolve all category names in parallel
+            await Promise.all([...new Set(candidates.map(p => p.part_cat_id))].map(id => fetchPartCategory(id)));
 
-        // Filter out sticker/gear/etc. categories, then pick by index (wrap around if needed)
-        const valid = candidates.filter(p => !isPotdExcluded(partCategoryCache[p.part_cat_id]));
-        if (!valid.length) throw new Error('No valid parts after filtering');
+            // Filter out sticker/gear/etc. categories, then pick by index (wrap around if needed)
+            const valid = candidates.filter(p => !isPotdExcluded(partCategoryCache[p.part_cat_id]));
+            if (!valid.length) throw new Error('No valid parts after filtering');
 
-        const part = valid[candidateIdx % valid.length];
-        renderPartOfTheDay({ ...part, category_name: partCategoryCache[part.part_cat_id] || 'Unknown' });
-    } catch (err) {
-        if (container) container.innerHTML = `<span style="color:#333;font-size:0.8em;">Could not load part of the day.</span>`;
+            const part = valid[candidateIdx % valid.length];
+            renderPartOfTheDay({ ...part, category_name: partCategoryCache[part.part_cat_id] || 'Unknown' });
+            return;
+        } catch (err) {
+            lastErr = err;
+        }
     }
+
+    console.error('Part of the Day failed:', lastErr);
+    if (container) container.innerHTML = `<span style="color:#333;font-size:0.8em;">Could not load part of the day.</span>`;
 }
 
 function renderPartOfTheDay(part) {
