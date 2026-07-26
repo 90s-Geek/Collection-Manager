@@ -8,21 +8,25 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --green:      #00ff88;
-            --green-dim:  #00cc6a;
-            --green-glow: rgba(0, 255, 136, 0.18);
+            --green:      #39e880;
+            --green-dim:  #28c96a;
+            --green-glow: rgba(57, 232, 128, 0.15);
             --cyan:       #00e5ff;
             --red:        #ff4466;
-            --bg:         #090d09;
-            --surface:    #101610;
-            --surface2:   #151d15;
-            --border:     #1e2b1e;
-            --border2:    #243022;
+            --bg:         #050805;
+            --surface:    #0e1610;
+            --surface2:   #131d14;
+            --border:     #243428;
+            --border2:    #2c3e2e;
             --text:       #cce8d0;
             --text-dim:   #6b8a72;
             --text-muted: #3d5442;
             --mono:       'JetBrains Mono', 'Courier New', monospace;
             --sans:       'Space Grotesk', sans-serif;
+            --radius:     10px;
+            --radius-sm:  6px;
+            --radius-lg:  16px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,9 +35,9 @@
             height: 100%;
             background-color: var(--bg);
             background-image:
-                linear-gradient(rgba(0, 255, 136, 0.022) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 136, 0.022) 1px, transparent 1px),
-                radial-gradient(ellipse at 50% 0%, rgba(0, 255, 136, 0.05) 0%, transparent 55%),
+                linear-gradient(rgba(57, 232, 128, 0.018) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(57, 232, 128, 0.018) 1px, transparent 1px),
+                radial-gradient(ellipse at 50% 0%, rgba(57, 232, 128, 0.04) 0%, transparent 55%),
                 linear-gradient(160deg, #060d06 0%, #0a120a 50%, #080e08 100%);
             background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%;
             background-attachment: fixed;
@@ -77,13 +81,13 @@
             height: 150px;
             border-radius: 50%;
             border: 3px solid var(--green-dim);
-            box-shadow: 0 0 30px var(--green-glow), 0 0 60px var(--green-glow), 0 0 90px rgba(0, 255, 136, 0.1);
+            box-shadow: 0 0 30px var(--green-glow), 0 0 60px var(--green-glow), 0 0 90px rgba(57, 232, 128, 0.1);
             animation: logoGlow 3s ease-in-out infinite;
         }
     
         @keyframes logoGlow {
-            0%, 100% { box-shadow: 0 0 30px var(--green-glow), 0 0 60px var(--green-glow), 0 0 90px rgba(0, 255, 136, 0.1); }
-            50%       { box-shadow: 0 0 40px var(--green-glow), 0 0 80px var(--green-glow), 0 0 120px rgba(0, 255, 136, 0.2); }
+            0%, 100% { box-shadow: 0 0 30px var(--green-glow), 0 0 60px var(--green-glow), 0 0 90px rgba(57, 232, 128, 0.1); }
+            50%       { box-shadow: 0 0 40px var(--green-glow), 0 0 80px var(--green-glow), 0 0 120px rgba(57, 232, 128, 0.2); }
         }
 
         .logo-area h1 {
@@ -108,9 +112,9 @@
             width: 100%;
             background: var(--surface);
             border: 1px solid var(--border2);
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             overflow: hidden;
-            box-shadow: 0 0 40px rgba(0, 255, 136, 0.06), 0 8px 32px rgba(0,0,0,0.4);
+            box-shadow: 0 0 40px rgba(57, 232, 128, 0.06), 0 8px 32px rgba(0,0,0,0.4);
         }
 
         .terminal-bar {
@@ -172,14 +176,14 @@
             width: 100%;
             background: var(--surface2);
             border: 1px solid var(--border2);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             padding: 12px 14px;
             color: var(--green);
             font-family: var(--mono);
             font-size: 0.95em;
             letter-spacing: 3px;
             outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            transition: border-color var(--transition), box-shadow var(--transition);
         }
 
         .input-group input:focus {
@@ -197,7 +201,7 @@
             padding: 13px;
             background: transparent;
             border: 1px solid var(--green-dim);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             color: var(--green);
             font-family: var(--mono);
             font-size: 0.85em;
@@ -205,7 +209,7 @@
             letter-spacing: 3px;
             text-transform: uppercase;
             cursor: pointer;
-            transition: background 0.2s, box-shadow 0.2s;
+            transition: background var(--transition), box-shadow var(--transition);
             margin-top: 4px;
         }
 
