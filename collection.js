@@ -40,52 +40,6 @@ async function loadCollection() {
     applyControls();
 }
 
-function populateFilterDropdowns(data) {
-    // Themes — sorted A-Z, unique
-    const themes = [...new Set(data.map(i => i.theme).filter(Boolean))].sort();
-    const themeSelect = document.getElementById('filter-theme');
-    if (themeSelect) {
-        const currentTheme = themeSelect.value;
-        themeSelect.innerHTML = '<option value="">All Themes</option>';
-        themes.forEach(t => {
-            const opt = document.createElement('option');
-            opt.value = t;
-            opt.textContent = t;
-            if (t === currentTheme) opt.selected = true;
-            themeSelect.appendChild(opt);
-        });
-    }
-
-    // Years — sorted newest first, unique
-    const years = [...new Set(data.map(i => i.year).filter(Boolean))].sort((a, b) => b - a);
-    const yearSelect = document.getElementById('filter-year');
-    if (yearSelect) {
-        const currentYear = yearSelect.value;
-        yearSelect.innerHTML = '<option value="">All Years</option>';
-        years.forEach(y => {
-            const opt = document.createElement('option');
-            opt.value = y;
-            opt.textContent = y;
-            if (String(y) === currentYear) opt.selected = true;
-            yearSelect.appendChild(opt);
-        });
-    }
-
-    // Condition — fixed list, only on collection page
-    const conditionSelect = document.getElementById('filter-condition');
-    if (conditionSelect) {
-        const currentCondition = conditionSelect.value;
-        conditionSelect.innerHTML = '<option value="">All Conditions</option>';
-        CONDITIONS.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.value;
-            opt.textContent = c.label;
-            if (c.value === currentCondition) opt.selected = true;
-            conditionSelect.appendChild(opt);
-        });
-    }
-}
-
 function applyControls() {
     // Show filtering state while list is being rebuilt
     const list = document.getElementById('collection-list');
