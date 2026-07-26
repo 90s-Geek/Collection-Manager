@@ -181,9 +181,10 @@
             border-radius: var(--radius);
             padding: 14px 12px;
             text-align: center;
-            transition: border-color var(--transition), transform var(--transition);
+            cursor: pointer;
+            transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
         }
-        .condition-tile:hover { border-color: var(--border2); transform: translateY(-1px); }
+        .condition-tile:hover { border-color: var(--text-dim); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
         .condition-tile-val {
             font-family: var(--mono);
             font-size: 1.8em;
@@ -411,6 +412,14 @@
         <div class="recent-list" id="recent-list"><div class="stats-loading">Loading</div></div>
     </div>
 
+    <div class="modal-overlay" id="condition-modal" onclick="closeConditionModal(event)">
+        <div class="modal-box" id="condition-modal-box" style="max-width:480px;text-align:left;border-top-color:var(--magenta);box-shadow:0 24px 80px rgba(0,0,0,0.7), 0 1px 0 rgba(255,77,255,0.08), 0 0 0 1px rgba(255,77,255,0.04);">
+            <button class="modal-close" onclick="document.getElementById('condition-modal').classList.remove('active')">✕</button>
+            <h2 id="condition-modal-title" style="color:var(--magenta);"></h2>
+            <div id="condition-modal-list" style="display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow-y:auto;margin-top:10px;"></div>
+        </div>
+    </div>
+
     <nav class="quick-links"></nav>
     <div id="stats-tooltip"></div>
 
@@ -423,6 +432,9 @@
 
     // ── Helpers ───────────────────────────────────────────────
     function fmt(n) { return Number(n).toLocaleString(); }
+
+    // Full collection, cached after load so tile clicks can filter it without refetching
+    let statsCollectionCache = [];
 
     function relativeDate(iso) {
         if (!iso) return '';
@@ -446,6 +458,7 @@
 
         const col = colRes.data || [];
         const wl  = wlRes.data  || [];
+        statsCollectionCache = col;
 
         renderKPIs(col, wl);
         renderThemeChart(col);
@@ -547,7 +560,7 @@
         document.getElementById('condition-chart').innerHTML = rows.map(r => {
             const pct = ((r.count / total) * 100).toFixed(0);
             return `
-                <div class="condition-tile">
+                <div class="condition-tile" onclick="showConditionSets('${r.label}')" title="Click to view these sets">
                     <div class="condition-tile-val" style="color:${r.color}">${r.count}</div>
                     <div class="condition-tile-pct">${pct}%</div>
                     <div class="condition-tile-label">${r.label}</div>
@@ -555,6 +568,35 @@
                 </div>
             `;
         }).join('');
+    }
+
+    // Opens a modal listing every set in the clicked condition category
+    function showConditionSets(label) {
+        const items = label === 'Unset'
+            ? statsCollectionCache.filter(i => !i.condition)
+            : statsCollectionCache.filter(i => i.condition === label);
+
+        document.getElementById('condition-modal-title').textContent =
+            `${label} — ${items.length} set${items.length !== 1 ? 's' : ''}`;
+
+        document.getElementById('condition-modal-list').innerHTML = items.length
+            ? items.map((item, i) => `
+                <div class="recent-item" style="animation:fadeSlideIn 0.25s ease ${Math.min(i * 20, 400)}ms both">
+                    <img src="${item.img_url || ''}" alt="${item.name}"
+                         onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'38\\' height=\\'30\\'><rect width=\\'38\\' height=\\'30\\' fill=\\'%23111\\'/></svg>'">
+                    <div class="recent-item-name">${item.name}</div>
+                    <div class="recent-item-meta">${item.theme || '—'} · ${item.year || '—'}</div>
+                </div>
+            `).join('')
+            : '<div class="stats-loading">No sets in this category</div>';
+
+        document.getElementById('condition-modal').classList.add('active');
+    }
+
+    function closeConditionModal(e) {
+        if (e.target === document.getElementById('condition-modal')) {
+            document.getElementById('condition-modal').classList.remove('active');
+        }
     }
 
     // ── Recent Adds ───────────────────────────────────────────
