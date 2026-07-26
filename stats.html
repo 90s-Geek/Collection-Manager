@@ -44,8 +44,6 @@
             box-shadow: 0 0 8px var(--green);
         }
         .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-        .kpi-card.clickable { cursor: pointer; }
-        .kpi-card.clickable:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 1px rgba(57,232,128,0.15); }
         .kpi-card:nth-child(2) { animation-delay: 0.05s; }
         .kpi-card:nth-child(2)::after { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
         .kpi-card:nth-child(3) { animation-delay: 0.10s; }
@@ -158,9 +156,6 @@
             border-radius: 6px;
         }
         .bar-count { font-family: var(--mono); font-size: 0.7em; color: var(--text-muted); text-align: left; }
-        .bar-row.clickable { cursor: pointer; }
-        .bar-row.clickable:hover .bar-label { color: var(--green); }
-        .bar-row.clickable:hover .bar-track { box-shadow: 0 0 0 1px rgba(57,232,128,0.2); }
 
         /* Colour variants */
         .bar-fill.cyan    { background: linear-gradient(90deg, #009eb5, var(--cyan)); box-shadow: 0 0 6px rgba(0,229,255,0.3); }
@@ -189,8 +184,6 @@
             transition: border-color var(--transition), transform var(--transition);
         }
         .condition-tile:hover { border-color: var(--border2); transform: translateY(-1px); }
-        .condition-tile.clickable { cursor: pointer; }
-        .condition-tile.clickable:hover { border-color: var(--green-dim, var(--green)); box-shadow: 0 0 0 1px rgba(57,232,128,0.15); }
         .condition-tile-val {
             font-family: var(--mono);
             font-size: 1.8em;
@@ -213,63 +206,6 @@
         }
         .condition-tile-bar { height: 3px; border-radius: 2px; margin-top: 10px; transition: width 0.5s; }
 
-        /* ── Sets-list modal (drill-down for clickable stats) ──── */
-        .stats-list-box { max-width: 480px; text-align: left; padding: 24px; }
-        .stats-list-title {
-            font-family: var(--mono);
-            font-size: 0.85em;
-            letter-spacing: 1px;
-            color: var(--text);
-            text-transform: uppercase;
-            margin: 0 0 4px;
-            padding-right: 24px;
-        }
-        .stats-list-count {
-            font-family: var(--mono);
-            font-size: 0.68em;
-            color: var(--text-muted);
-            margin-bottom: 14px;
-        }
-        .stats-list-items { max-height: 55vh; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
-        .stats-list-item {
-            display: flex; align-items: center; gap: 10px;
-            padding: 7px 9px;
-            background: var(--surface2);
-            border: 1px solid var(--border2);
-            border-radius: var(--radius-sm);
-            text-decoration: none;
-            color: inherit;
-            cursor: pointer;
-            transition: border-color var(--transition), background var(--transition);
-        }
-        .stats-list-item:hover {
-            border-color: var(--green-dim, var(--green));
-            background: var(--surface3, var(--surface2));
-        }
-        .stats-list-item:hover .stats-list-item-name { color: var(--green); }
-        .stats-list-item img {
-            width: 34px; height: 26px; object-fit: contain;
-            background: #fff; border-radius: 3px; flex-shrink: 0;
-        }
-        .stats-list-item-name {
-            font-family: var(--sans);
-            font-size: 0.82em;
-            color: var(--text);
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .stats-list-item-meta {
-            font-family: var(--mono);
-            font-size: 0.63em;
-            color: var(--text-muted);
-        }
-        .stats-list-empty {
-            font-family: var(--mono);
-            font-size: 0.75em;
-            color: var(--text-muted);
-            text-align: center;
-            padding: 20px 0;
-        }
-
         /* ── Timeline (years) ────────────────────────────────── */
         .timeline-wrap { overflow: hidden; padding-bottom: 6px; }
         .timeline {
@@ -285,7 +221,7 @@
             flex-direction: column;
             align-items: center;
             gap: 4px;
-            cursor: pointer;
+            cursor: default;
             flex: 1;
             min-width: 0;
         }
@@ -453,7 +389,7 @@
     <div class="nav">
         <a href="index.html">SEARCH</a>
         <a href="collection.html">LEGO</a>
-        <a href="wantlist.html">WISH LIST</a>
+        <a href="wantlist.html">LEGO WANTS</a>
     </div>
     <div id="toast-container"></div>
 
@@ -497,7 +433,7 @@
         </div>
         <div class="section-title" style="margin-top:16px;margin-bottom:12px;">> VALUE BY THEME <span id="value-theme-label"></span></div>
         <div class="bar-chart bar-chart--wide" id="value-theme-chart"><div class="stats-loading">Loading</div></div>
-        <div class="section-title" style="margin-top:16px;margin-bottom:12px;">> TOP 10 SETS BY MARKET VALUE</div>
+        <div class="section-title" style="margin-top:16px;margin-bottom:12px;">> TOP 10 SETS BY RETAIL VALUE</div>
         <div id="value-top-sets"><div class="stats-loading">Loading</div></div>
     </div>
 
@@ -510,21 +446,11 @@
     <nav class="quick-links"></nav>
     <div id="stats-tooltip"></div>
 
-    <!-- Drill-down modal: shows which sets make up a clicked stat -->
-    <div class="modal-overlay" id="stats-list-modal" onclick="closeStatsListModal(event)">
-        <div class="modal-box stats-list-box" id="stats-list-box">
-            <button class="modal-close" onclick="document.getElementById('stats-list-modal').classList.remove('active')">✕</button>
-            <div class="stats-list-title" id="stats-list-title"></div>
-            <div class="stats-list-count" id="stats-list-count"></div>
-            <div class="stats-list-items" id="stats-list-items"></div>
-        </div>
-    </div>
-
-    <script src="script.js?v=11"></script>
+    <script src="core.js?v=1"></script>
     <script>
-    // ── Config (same as script.js) ────────────────────────────
-    // These are already defined by script.js, but stats.html loads
-    // script.js first which sets up `db`. We just need to call our
+    // ── Config (same as core.js) ────────────────────────────
+    // These are already defined by core.js, but stats.html loads
+    // core.js first which sets up `db`. We just need to call our
     // own init after that.
 
     // ── Helpers ───────────────────────────────────────────────
@@ -544,9 +470,6 @@
     }
 
     // ── Main loader ───────────────────────────────────────────
-    let statsCollectionCache = [];
-    let statsWantlistCache = [];
-
     async function loadStats() {
         const [colRes, wlRes] = await Promise.all([
             db.from('lego_collection').select('*').order('created_at', { ascending: false }),
@@ -555,8 +478,6 @@
 
         const col = colRes.data || [];
         const wl  = wlRes.data  || [];
-        statsCollectionCache = col;
-        statsWantlistCache = wl;
 
         renderKPIs(col, wl);
         renderThemeChart(col);
@@ -575,39 +496,23 @@
         const sealed     = col.filter(i => i.condition === 'Sealed').length;
 
         const kpis = [
-            { val: fmt(col.length), label: 'Sets in Collection', color: 'green', kind: 'all' },
+            { val: fmt(col.length), label: 'Sets in Collection', color: 'green' },
             { val: fmt(themes),     label: 'Unique Themes',      color: 'cyan' },
-            { val: sealed,          label: 'Sealed Sets',        color: 'magenta', kind: 'sealed' },
-            { val: earliest,        label: 'Oldest Year',        color: 'purple', kind: earliest !== '—' ? 'year' : null, year: earliest },
-            { val: newest,          label: 'Newest Year',        color: 'green', kind: newest !== '—' ? 'year' : null, year: newest },
-            { val: fmt(wl.length),  label: 'On Wish List',       color: 'amber', kind: 'wishlist' },
+            { val: sealed,          label: 'Sealed Sets',        color: 'magenta' },
+            { val: earliest,        label: 'Oldest Year',        color: 'purple' },
+            { val: newest,          label: 'Newest Year',        color: 'green' },
+            { val: fmt(wl.length),  label: 'On Want List',       color: 'amber' },
         ];
 
         document.getElementById('kpi-grid').innerHTML = kpis.map(k => `
-            <div class="kpi-card ${k.kind ? 'clickable' : ''}" ${k.kind ? `onclick="showKpiSetsModal('${k.kind}', ${k.year != null && k.year !== '—' ? k.year : 'null'})" title="Click to see sets"` : ''}>
+            <div class="kpi-card">
                 <div class="kpi-val">${k.val}</div>
                 <div class="kpi-label">${k.label}</div>
             </div>
         `).join('');
     }
 
-    function showKpiSetsModal(kind, year) {
-        if (kind === 'all') {
-            openStatsListModal('All Sets', statsCollectionCache, item => `${item.theme || '—'} · ${item.year || '—'}`);
-        } else if (kind === 'sealed') {
-            showConditionSetsModal('Sealed');
-        } else if (kind === 'year') {
-            const sets = statsCollectionCache.filter(i => Number(i.year) === Number(year));
-            openStatsListModal(`${year} Sets`, sets, item => `${item.theme || '—'} · ${item.condition || 'no condition'}`);
-        } else if (kind === 'wishlist') {
-            openStatsListModal('Wish List', statsWantlistCache, item => `${item.theme || '—'} · ${item.year || '—'}`, 'wantlist.html');
-        }
-    }
-
     // ── Theme Bar Chart ───────────────────────────────────────
-    let lastThemeChartData = [];
-    let lastValueThemeChartData = [];
-
     function renderThemeChart(col) {
         const counts = {};
         col.forEach(i => { if (i.theme) counts[i.theme] = (counts[i.theme] || 0) + 1; });
@@ -615,11 +520,10 @@
         const top    = sorted.slice(0, 12);
         const max    = top[0]?.[1] || 1;
         const colors = ['', 'cyan', 'magenta', 'amber', 'purple', 'red', '', 'cyan', 'magenta', 'amber', 'purple', 'red'];
-        lastThemeChartData = top;
 
         document.getElementById('theme-count-label').textContent = `${sorted.length} themes total`;
         document.getElementById('theme-chart').innerHTML = top.map(([theme, count], i) => `
-            <div class="bar-row clickable" data-tip="${theme}: ${count} set${count !== 1 ? 's' : ''}" onclick="showThemeSetsModal(${i})">
+            <div class="bar-row" data-tip="${theme}: ${count} set${count !== 1 ? 's' : ''}">
                 <div class="bar-label">${theme}</div>
                 <div class="bar-track">
                     <div class="bar-fill ${colors[i]}" style="width:${(count/max*100).toFixed(1)}%;animation-delay:${i*40}ms"></div>
@@ -627,24 +531,6 @@
                 <div class="bar-count">${count}</div>
             </div>
         `).join('') || '<div class="stats-loading">No data</div>';
-    }
-
-    function showThemeSetsModal(index) {
-        const entry = lastThemeChartData[index];
-        if (!entry) return;
-        const [theme] = entry;
-        const sets = statsCollectionCache.filter(i => i.theme === theme);
-        openStatsListModal(`${theme} Sets`, sets, item => `${item.year || '—'} · ${item.condition || 'no condition'}`);
-    }
-
-    function showValueThemeSetsModal(index) {
-        const entry = lastValueThemeChartData[index];
-        if (!entry) return;
-        const [theme] = entry;
-        const sets = statsCollectionCache
-            .filter(i => i.theme === theme && i.market_value != null)
-            .sort((a, b) => Number(b.market_value) - Number(a.market_value));
-        openStatsListModal(`${theme} — Market Value`, sets, item => `$${Number(item.market_value).toFixed(2)} mkt · ${item.year || '—'}`);
     }
 
     // ── Year Timeline ─────────────────────────────────────────
@@ -663,7 +549,7 @@
             const c   = counts[yr];
             const h   = Math.max(4, Math.round((c / max) * MAX_H));
             return `
-                <div class="tl-col" data-tip="${yr}: ${c} set${c !== 1 ? 's' : ''}" onclick="showKpiSetsModal('year', ${yr})">
+                <div class="tl-col" data-tip="${yr}: ${c} set${c !== 1 ? 's' : ''}">
                     <div class="tl-count">${c}</div>
                     <div class="tl-bar" style="height:${h}px;animation-delay:${i*18}ms"></div>
                     <div class="tl-year">${yr}</div>
@@ -693,7 +579,7 @@
         document.getElementById('condition-chart').innerHTML = rows.map(r => {
             const pct = ((r.count / total) * 100).toFixed(0);
             return `
-                <div class="condition-tile clickable" onclick="showConditionSetsModal('${r.label}')" title="Click to see sets">
+                <div class="condition-tile">
                     <div class="condition-tile-val" style="color:${r.color}">${r.count}</div>
                     <div class="condition-tile-pct">${pct}%</div>
                     <div class="condition-tile-label">${r.label}</div>
@@ -701,41 +587,6 @@
                 </div>
             `;
         }).join('');
-    }
-
-    function showConditionSetsModal(label) {
-        const sets = label === 'Unset'
-            ? statsCollectionCache.filter(i => !i.condition)
-            : statsCollectionCache.filter(i => i.condition === label);
-        openStatsListModal(`${label} Sets`, sets, item => `${item.theme || '—'} · ${item.year || '—'}`);
-    }
-
-    // ── Generic drill-down modal ────────────────────────────────
-    function openStatsListModal(title, sets, metaFn, linkBase) {
-        linkBase = linkBase || 'collection.html';
-        document.getElementById('stats-list-title').textContent = title;
-        document.getElementById('stats-list-count').textContent =
-            `${sets.length} set${sets.length !== 1 ? 's' : ''}`;
-
-        document.getElementById('stats-list-items').innerHTML = sets.length
-            ? sets.map(item => `
-                <a class="stats-list-item" href="${linkBase}?edit=${item.id}" title="Click to edit this set">
-                    <img src="${item.img_url || ''}" alt="${item.name || ''}" onerror="this.style.visibility='hidden'">
-                    <div style="flex:1;min-width:0;">
-                        <div class="stats-list-item-name">${item.name || item.set_num || 'Unknown set'}</div>
-                        <div class="stats-list-item-meta">${metaFn ? metaFn(item) : (item.set_num || '')}</div>
-                    </div>
-                </a>
-            `).join('')
-            : '<div class="stats-list-empty">No sets to show</div>';
-
-        document.getElementById('stats-list-modal').classList.add('active');
-    }
-
-    function closeStatsListModal(e) {
-        if (e.target === document.getElementById('stats-list-modal')) {
-            document.getElementById('stats-list-modal').classList.remove('active');
-        }
     }
 
     // ── Recent Adds ───────────────────────────────────────────
@@ -810,8 +661,6 @@
         document.getElementById('value-coverage-label').textContent =
             `${withRetail.length}/${col.length} sets with retail data (${coveragePct}%)`;
 
-        const gainClass    = gainLoss > 0 ? 'value-gain' : gainLoss < 0 ? 'value-loss' : 'value-neutral';
-        const gainSign     = gainLoss >= 0 ? '+' : '';
         const gainClassMkt = gainLossMkt > 0 ? 'value-gain' : gainLossMkt < 0 ? 'value-loss' : 'value-neutral';
         const gainSignMkt  = gainLossMkt >= 0 ? '+' : '';
 
@@ -844,21 +693,20 @@
         `;
 
         // ── Value by Theme bar chart ──
-        const themeMarket = {};
+        const themeRetail = {};
         col.forEach(i => {
             if (!i.theme) return;
-            const price = i.market_value;
+            const price = retailPriceCache[i.set_num];
             if (price == null) return;
-            themeMarket[i.theme] = (themeMarket[i.theme] || 0) + Number(price);
+            themeRetail[i.theme] = (themeRetail[i.theme] || 0) + price;
         });
-        const sortedThemes = Object.entries(themeMarket).sort((a,b) => b[1]-a[1]).slice(0, 10);
+        const sortedThemes = Object.entries(themeRetail).sort((a,b) => b[1]-a[1]).slice(0, 10);
         const maxVal = sortedThemes[0]?.[1] || 1;
         const colors = ['', 'cyan', 'magenta', 'amber', 'purple', 'red', '', 'cyan', 'magenta', 'amber'];
-        lastValueThemeChartData = sortedThemes;
-        document.getElementById('value-theme-label').textContent = `top ${sortedThemes.length} by market value`;
+        document.getElementById('value-theme-label').textContent = `top ${sortedThemes.length} by retail price`;
         document.getElementById('value-theme-chart').innerHTML = sortedThemes.length
             ? sortedThemes.map(([theme, val], i) => `
-                <div class="bar-row clickable" data-tip="${theme}: ${fmtMoney(val)} market value" onclick="showValueThemeSetsModal(${i})">
+                <div class="bar-row" data-tip="${theme}: ${fmtMoney(val)} retail">
                     <div class="bar-label">${theme}</div>
                     <div class="bar-track">
                         <div class="bar-fill ${colors[i]}" style="width:${(val/maxVal*100).toFixed(1)}%;animation-delay:${i*40}ms"></div>
@@ -866,22 +714,21 @@
                     <div class="bar-count">${fmtMoney(val)}</div>
                 </div>
             `).join('')
-            : '<div class="stats-loading">No market value data available</div>';
+            : '<div class="stats-loading">No retail price data available</div>';
 
-        // ── Top 10 sets by market value ──
-        const setsWithMarket = col
-            .filter(i => i.market_value != null)
-            .sort((a,b) => Number(b.market_value) - Number(a.market_value))
+        // ── Top 10 sets by retail value ──
+        const setsWithRetail = col
+            .map(i => ({ ...i, retailPrice: retailPriceCache[i.set_num] }))
+            .filter(i => i.retailPrice != null)
+            .sort((a,b) => b.retailPrice - a.retailPrice)
             .slice(0, 10);
 
-        document.getElementById('value-top-sets').innerHTML = setsWithMarket.length
-            ? setsWithMarket.map((item, idx) => {
-                const marketVal = Number(item.market_value);
-                const diff = item.price_paid != null ? marketVal - Number(item.price_paid) : null;
+        document.getElementById('value-top-sets').innerHTML = setsWithRetail.length
+            ? setsWithRetail.map((item, idx) => {
+                const diff = item.price_paid != null ? item.retailPrice - Number(item.price_paid) : null;
                 const diffHtml = diff != null
                     ? `<span style="font-family:var(--mono);font-size:0.68em;margin-left:8px;color:${diff >= 0 ? 'var(--green)' : 'var(--red)'};">${diff >= 0 ? '+' : ''}$${diff.toFixed(2)}</span>`
                     : '';
-                const retailPrice = retailPriceCache[item.set_num];
                 return `
                     <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);margin-bottom:5px;animation:fadeSlideIn 0.3s ease ${idx*40}ms both;">
                         <span style="font-family:var(--mono);font-size:0.65em;color:var(--text-muted);min-width:18px;">${idx+1}.</span>
@@ -891,18 +738,18 @@
                             <div style="font-family:var(--mono);font-size:0.65em;color:var(--text-muted);">${item.theme||'—'} · ${item.year||'—'}</div>
                         </div>
                         <div style="text-align:right;flex-shrink:0;">
-                            <div style="font-family:var(--mono);font-size:0.9em;color:#ffaa00;font-weight:700;">$${marketVal.toFixed(2)}</div>
+                            <div style="font-family:var(--mono);font-size:0.9em;color:var(--cyan);font-weight:700;">$${item.retailPrice.toFixed(2)}</div>
                             ${item.price_paid != null ? `<div style="font-family:var(--mono);font-size:0.62em;color:var(--text-muted);">paid $${Number(item.price_paid).toFixed(2)}${diffHtml}</div>` : `<div style="font-family:var(--mono);font-size:0.62em;color:var(--text-muted);">no price logged</div>`}
-                            ${retailPrice != null ? `<div style="font-family:var(--mono);font-size:0.62em;color:var(--cyan);">$${Number(retailPrice).toFixed(2)} retail</div>` : ''}
+                            ${item.market_value != null ? `<div style="font-family:var(--mono);font-size:0.62em;color:#ffaa00;">📈 $${Number(item.market_value).toFixed(2)} mkt</div>` : ''}
                         </div>
                     </div>
                 `;
             }).join('')
-            : '<div class="stats-loading">No market value data yet</div>';
+            : '<div class="stats-loading">No retail price data yet</div>';
     }
 
     // ── Boot ──────────────────────────────────────────────────
-    // script.js sets window.onload — override to also call loadStats
+    // core.js sets window.onload — override to also call loadStats
     const _origOnload = window.onload;
     window.onload = () => {
         if (_origOnload) _origOnload();
