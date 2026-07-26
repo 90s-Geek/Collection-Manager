@@ -190,10 +190,10 @@ button:active { transform: translateY(0); }
 
 .logo {
     position: fixed;
-    top: 37.5px;
-    left: 37.5px;
-    width: 85px;
-    height: 85px;
+    top: 46.875px;
+    left: calc(var(--sidebar-width) / 2 - 53.125px);
+    width: 106.25px;
+    height: 106.25px;
     display: block;
     cursor: pointer;
     z-index: 101;
@@ -266,7 +266,7 @@ button:active { transform: translateY(0); }
 
 .quick-links {
     position: fixed;
-    top: 140px;
+    top: 171px;
     left: 12px;
     display: flex;
     flex-direction: column;
@@ -1578,13 +1578,13 @@ button:active { transform: translateY(0); }
 @media (max-width: 900px) and (min-width: 601px) {
     :root { --sidebar-width: 140px; }
     body { margin-left: calc(var(--sidebar-width) + 28px); }
-    .logo { width: 72.5px; height: 72.5px; top: 11.25px; left: calc(var(--sidebar-width) / 2 - 36.25px); }
-    .quick-links { top: 101px; left: 8px; width: calc(var(--sidebar-width) - 16px); }
+    .logo { width: 90.625px; height: 90.625px; top: 24.6875px; left: calc(var(--sidebar-width) / 2 - 45.3125px); }
+    .quick-links { top: 132px; left: 8px; width: calc(var(--sidebar-width) - 16px); }
     .quick-links a { font-size: 0.62em; padding: 6px 8px; }
 }
 
 @media (max-width: 600px) {
-    .logo { position: static; display: block; margin: 0 auto 25px auto; width: 87.5px; height: 87.5px; }
+    .logo { position: static; display: block; margin: 0 auto 31.25px auto; width: 109.375px; height: 109.375px; }
     .sidebar-panel { display: none; }
     .nav { position: static; margin-bottom: 20px; height: auto; padding: 4px 8px; flex-wrap: wrap; }
     body { margin: 12px 12px 40px 12px; padding: 0; }
