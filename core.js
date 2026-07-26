@@ -337,10 +337,14 @@ window.onload = () => {
     // Check if the dashboard container exists (index.html)
     if (document.getElementById('last-added-container')) {
         loadLastAdded();
-        loadPresenceCache().then(() => {
-            // Load SOTD after presence cache is ready so badges show correctly
-            loadSetOfTheDay();
-        });
+        loadPresenceCache()
+            .catch(err => console.error('Presence cache failed:', err))
+            .finally(() => {
+                // Load SOTD regardless of presence cache outcome — badges just
+                // won't show if the cache genuinely failed, but SOTD itself
+                // should never get stuck behind an unrelated query failure.
+                loadSetOfTheDay();
+            });
     }
     // Check if the full list exists (collection.html)
     if (document.getElementById('collection-list')) {
