@@ -369,10 +369,13 @@ window.onload = () => {
     if (document.getElementById('last-added-container')) {
         loadLastAdded();
         loadPresenceCache().then(() => {
-            // Load SOTD after presence cache is ready so badges show correctly
-            loadSetOfTheDay();
+            // Load SOTD after presence cache is ready so badges show correctly.
+            // POTD runs after SOTD finishes (not in parallel) so their bursts
+            // of Rebrickable API calls don't collide and trigger rate limiting.
+            loadSetOfTheDay().finally(() => {
+                loadPartOfTheDay();
+            });
         });
-        loadPartOfTheDay();
     }
     // Check if the full list exists (collection.html)
     if (document.getElementById('collection-list')) {
