@@ -48,17 +48,31 @@ function extractTag(block, tag) {
   return m[1].replace(/^<!\[CDATA\[([\s\S]*?)\]\]>$/, '$1').trim();
 }
 
-function extractImage(block, descriptionHtml) {
-  // Try <media:content> or <enclosure> at the item level first (these are
-  // real XML attributes, never entity-escaped)
+function extractImage(block, htmlSources) {
+  // Try <media:content> / <media:thumbnail> / <enclosure> at the item level
+  // first (real XML attributes, never entity-escaped or lazy-loaded).
   const media = block.match(/<media:content[^>]+url=["']([^"']+)["']/i)
+    || block.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i)
     || block.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]*type=["']image/i);
   if (media) return media[1];
-  // Fall back to the first <img> inside the (already-decoded) description.
-  // Some feeds (e.g. Brickset) entity-escape their embedded HTML instead of
-  // using CDATA, so this only works once entities have been decoded.
-  const imgMatch = descriptionHtml.match(/<img[^>]+src=["']([^"']+)["']/i);
-  return imgMatch ? imgMatch[1] : null;
+
+  // Fall back to an <img> inside the post HTML. Many WordPress themes/
+  // plugins lazy-load images, leaving a blank placeholder in `src` and the
+  // real URL in `data-src`, `data-lazy-src`, `data-original`, or `srcset`
+  // — so check those before giving up.
+  for (const html of htmlSources) {
+    if (!html) continue;
+    const imgTag = html.match(/<img[^>]*>/i);
+    if (!imgTag) continue;
+    const tag = imgTag[0];
+    const attr = tag.match(/data-lazy-src=["']([^"']+)["']/i)
+      || tag.match(/data-src=["']([^"']+)["']/i)
+      || tag.match(/data-original=["']([^"']+)["']/i)
+      || tag.match(/srcset=["']([^"'\s]+)/i)
+      || tag.match(/src=["']([^"']+)["']/i);
+    if (attr && !/^data:image\//i.test(attr[1])) return attr[1];
+  }
+  return null;
 }
 
 function parseFeed(xml, source) {
@@ -79,7 +93,6 @@ function parseFeed(xml, source) {
     const rawContent = extractTag(block, 'content:encoded');
     const descriptionHtml = decodeEntities(rawDescription);
     const contentHtml = decodeEntities(rawContent);
-    const imageSourceHtml = contentHtml || descriptionHtml;
     const excerptSourceHtml = descriptionHtml || contentHtml;
 
     const pubDate = pubDateRaw ? new Date(pubDateRaw) : null;
@@ -88,7 +101,7 @@ function parseFeed(xml, source) {
       link: link.trim(),
       source,
       pubDate: pubDate && !isNaN(pubDate) ? pubDate.toISOString() : null,
-      image: extractImage(block, imageSourceHtml),
+      image: extractImage(block, [contentHtml, descriptionHtml]),
       excerpt: stripTags(excerptSourceHtml).slice(0, 160),
     };
   }).filter(item =>
