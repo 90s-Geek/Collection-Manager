@@ -109,6 +109,41 @@ function parseFeed(xml, source) {
   );
 }
 
+async function fetchOgImage(url, timeoutMs = 3500) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': '90sGeekLegoApp/1.0' },
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    // Only read enough of the page to find <head> meta tags — no need to
+    // download the whole article body just for one <meta> tag.
+    const reader = res.body?.getReader();
+    let html = '';
+    if (reader) {
+      const decoder = new TextDecoder();
+      while (html.length < 60000) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        html += decoder.decode(value, { stream: true });
+        if (/<\/head>/i.test(html)) break;
+      }
+      reader.cancel().catch(() => {});
+    } else {
+      html = await res.text();
+    }
+    const match = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -128,7 +163,8 @@ export default async function handler(req, res) {
   const articles = results
     .filter(r => r.status === 'fulfilled')
     .flatMap(r => r.value)
-    .sort((a, b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0));
+    .sort((a, b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0))
+    .slice(0, 40);
 
   const failedSources = results
     .map((r, i) => (r.status === 'rejected' ? FEEDS[i].source : null))
@@ -138,5 +174,19 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: 'All news sources failed', failedSources });
   }
 
-  res.json({ articles: articles.slice(0, 40), failedSources });
+  // For any article the feed itself didn't supply an image for, fall back
+  // to fetching the article page and reading its og:image meta tag. Capped
+  // to a bounded batch so a source with no feed images can't blow up
+  // response time on every request.
+  const missingImage = articles.filter(a => !a.image).slice(0, 15);
+  if (missingImage.length) {
+    await Promise.allSettled(
+      missingImage.map(async (a) => {
+        const img = await fetchOgImage(a.link);
+        if (img) a.image = img;
+      })
+    );
+  }
+
+  res.json({ articles, failedSources });
 }
