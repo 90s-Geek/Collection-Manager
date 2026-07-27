@@ -67,19 +67,29 @@ function parseFeed(xml, source) {
     const title = decodeEntities(extractTag(block, 'title'));
     const link = extractTag(block, 'link') || extractTag(block, 'guid');
     const pubDateRaw = extractTag(block, 'pubDate') || extractTag(block, 'dc:date');
-    const rawDescription = extractTag(block, 'description') || extractTag(block, 'content:encoded');
-    // Decode once here — CDATA-wrapped feeds already contain literal HTML,
-    // and entity-escaped feeds (e.g. Brickset) reveal their literal HTML
-    // only after this decode. Either way, downstream code sees real tags.
+
+    // WordPress feeds split these two purposes across separate tags:
+    // <description> is a plain-text excerpt (no image, by design), while
+    // <content:encoded> holds the full post HTML, including the featured
+    // image. Some other feeds (e.g. Brickset) only populate <description>
+    // and put the image right in there. So: use content:encoded for image
+    // lookup when present (falling back to description), and description
+    // for the excerpt text (falling back to content:encoded).
+    const rawDescription = extractTag(block, 'description');
+    const rawContent = extractTag(block, 'content:encoded');
     const descriptionHtml = decodeEntities(rawDescription);
+    const contentHtml = decodeEntities(rawContent);
+    const imageSourceHtml = contentHtml || descriptionHtml;
+    const excerptSourceHtml = descriptionHtml || contentHtml;
+
     const pubDate = pubDateRaw ? new Date(pubDateRaw) : null;
     return {
       title,
       link: link.trim(),
       source,
       pubDate: pubDate && !isNaN(pubDate) ? pubDate.toISOString() : null,
-      image: extractImage(block, descriptionHtml),
-      excerpt: stripTags(descriptionHtml).slice(0, 160),
+      image: extractImage(block, imageSourceHtml),
+      excerpt: stripTags(excerptSourceHtml).slice(0, 160),
     };
   }).filter(item =>
     item.title && item.link && !TITLE_EXCLUDE.some(re => re.test(item.title))
