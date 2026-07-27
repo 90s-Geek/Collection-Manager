@@ -25,12 +25,21 @@ function decodeEntities(str) {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
     .replace(/&#0?39;/g, "'")
-    .replace(/&nbsp;/g, ' ');
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&rsquo;/g, '\u2019')
+    .replace(/&lsquo;/g, '\u2018')
+    .replace(/&ldquo;/g, '\u201c')
+    .replace(/&rdquo;/g, '\u201d')
+    .replace(/&ndash;/g, '\u2013')
+    .replace(/&mdash;/g, '\u2014')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(parseInt(n, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)));
 }
 
 function stripTags(html) {
-  return decodeEntities(html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim());
+  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function extractTag(block, tag) {
@@ -39,12 +48,17 @@ function extractTag(block, tag) {
   return m[1].replace(/^<!\[CDATA\[([\s\S]*?)\]\]>$/, '$1').trim();
 }
 
-function extractImage(block) {
-  // Try <media:content>, <enclosure>, or first <img src="..."> in description
+function extractImage(block, descriptionHtml) {
+  // Try <media:content> or <enclosure> at the item level first (these are
+  // real XML attributes, never entity-escaped)
   const media = block.match(/<media:content[^>]+url=["']([^"']+)["']/i)
-    || block.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]*type=["']image/i)
-    || block.match(/<img[^>]+src=["']([^"']+)["']/i);
-  return media ? media[1] : null;
+    || block.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]*type=["']image/i);
+  if (media) return media[1];
+  // Fall back to the first <img> inside the (already-decoded) description.
+  // Some feeds (e.g. Brickset) entity-escape their embedded HTML instead of
+  // using CDATA, so this only works once entities have been decoded.
+  const imgMatch = descriptionHtml.match(/<img[^>]+src=["']([^"']+)["']/i);
+  return imgMatch ? imgMatch[1] : null;
 }
 
 function parseFeed(xml, source) {
@@ -53,15 +67,19 @@ function parseFeed(xml, source) {
     const title = decodeEntities(extractTag(block, 'title'));
     const link = extractTag(block, 'link') || extractTag(block, 'guid');
     const pubDateRaw = extractTag(block, 'pubDate') || extractTag(block, 'dc:date');
-    const description = extractTag(block, 'description') || extractTag(block, 'content:encoded');
+    const rawDescription = extractTag(block, 'description') || extractTag(block, 'content:encoded');
+    // Decode once here — CDATA-wrapped feeds already contain literal HTML,
+    // and entity-escaped feeds (e.g. Brickset) reveal their literal HTML
+    // only after this decode. Either way, downstream code sees real tags.
+    const descriptionHtml = decodeEntities(rawDescription);
     const pubDate = pubDateRaw ? new Date(pubDateRaw) : null;
     return {
       title,
       link: link.trim(),
       source,
       pubDate: pubDate && !isNaN(pubDate) ? pubDate.toISOString() : null,
-      image: extractImage(block),
-      excerpt: stripTags(description).slice(0, 160),
+      image: extractImage(block, descriptionHtml),
+      excerpt: stripTags(descriptionHtml).slice(0, 160),
     };
   }).filter(item =>
     item.title && item.link && !TITLE_EXCLUDE.some(re => re.test(item.title))
