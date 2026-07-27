@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>if (sessionStorage.getItem('90sgeek_auth') !== 'true') window.location.replace('login.html');</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="90s Geek LEGO Collection Manager — latest LEGO news.">
+    <link rel="icon" type="image/webp" href="images/90s_Geek_logo.webp">
+    <title>LEGO News</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="styles.css?v=11">
+    <style>
+        /* ── News Page Specific ───────────────────────────────── */
+        @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+        .news-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+        .news-filter-btn {
+            font-family: var(--mono);
+            font-size: 0.68em;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+        .news-filter-btn:hover { color: var(--text); border-color: var(--border); }
+        .news-filter-btn.active { color: #0a0f0a; background: var(--green); border-color: var(--green); font-weight: 700; }
+        .news-filter-btn[data-source="Brickset"].active { background: var(--cyan); border-color: var(--cyan); }
+        .news-filter-btn[data-source="Brick Fanatics"].active { background: var(--magenta); border-color: var(--magenta); }
+        .news-filter-btn[data-source="The Brothers Brick"].active { background: var(--amber); border-color: var(--amber); }
+
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 14px;
+        }
+        .news-card {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: var(--text);
+            animation: fadeSlideIn 0.35s ease both;
+            transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+        }
+        .news-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+            border-color: var(--border);
+        }
+        .news-card-img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            background: var(--surface2);
+            display: block;
+        }
+        .news-card-img-placeholder {
+            width: 100%;
+            height: 150px;
+            background: var(--surface2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--mono);
+            font-size: 1.8em;
+            color: var(--border2);
+        }
+        .news-card-body {
+            padding: 12px 14px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+        }
+        .news-card-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: var(--mono);
+            font-size: 0.62em;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .news-card-source { color: var(--cyan); font-weight: 700; }
+        .news-card[data-source="Brick Fanatics"] .news-card-source { color: var(--magenta); }
+        .news-card[data-source="The Brothers Brick"] .news-card-source { color: var(--amber); }
+        .news-card-date { color: var(--text-muted); }
+        .news-card-title {
+            font-family: var(--sans);
+            font-size: 0.95em;
+            font-weight: 600;
+            line-height: 1.35;
+        }
+        .news-card-excerpt {
+            font-family: var(--sans);
+            font-size: 0.78em;
+            color: var(--text-dim);
+            line-height: 1.5;
+            flex: 1;
+        }
+        .news-loading, .news-error {
+            font-family: var(--mono);
+            font-size: 0.8em;
+            color: var(--text-muted);
+            padding: 30px 0;
+            text-align: center;
+            grid-column: 1 / -1;
+        }
+        .news-source-warning {
+            font-family: var(--mono);
+            font-size: 0.65em;
+            color: var(--text-muted);
+            margin-bottom: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar-panel"></div>
+    <a href="index.html"><img src="images/90s_Geek_logo.webp" alt="90s Geek Logo" class="logo"></a>
+
+    <div class="nav">
+        <a href="index.html">SEARCH</a>
+        <a href="collection.html">COLLECTION</a>
+        <a href="wantlist.html">WISH LIST</a>
+        <a href="stats.html">STATS</a>
+    </div>
+    <div id="toast-container"></div>
+
+    <h1>LEGO News</h1>
+
+    <div id="news-source-warning"></div>
+
+    <div class="news-filters" id="news-filters">
+        <button class="news-filter-btn active" data-source="all">ALL</button>
+        <button class="news-filter-btn" data-source="Brickset">Brickset</button>
+        <button class="news-filter-btn" data-source="Brick Fanatics">Brick Fanatics</button>
+        <button class="news-filter-btn" data-source="The Brothers Brick">The Brothers Brick</button>
+    </div>
+
+    <div class="news-grid" id="news-grid">
+        <div class="news-loading">Loading news</div>
+    </div>
+
+    <nav class="quick-links"></nav>
+
+    <script src="core.js?v=1"></script>
+    <script>
+    let _newsArticles = [];
+    let _newsFilter = 'all';
+
+    function relativeDate(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const now = new Date();
+        const days = Math.floor((now - d) / 86400000);
+        if (days <= 0) return 'today';
+        if (days === 1) return 'yesterday';
+        if (days < 7)  return `${days}d ago`;
+        if (days < 30) return `${Math.floor(days/7)}w ago`;
+        if (days < 365) return `${Math.floor(days/30)}mo ago`;
+        return `${Math.floor(days/365)}y ago`;
+    }
+
+    function renderNewsGrid() {
+        const grid = document.getElementById('news-grid');
+        const filtered = _newsFilter === 'all'
+            ? _newsArticles
+            : _newsArticles.filter(a => a.source === _newsFilter);
+
+        if (!filtered.length) {
+            grid.innerHTML = '<div class="news-loading">No articles found</div>';
+            return;
+        }
+
+        grid.innerHTML = filtered.map((a, i) => `
+            <a class="news-card" data-source="${escapeHTML(a.source)}" href="${a.link}" target="_blank" rel="noopener"
+               style="animation-delay:${Math.min(i, 12) * 30}ms">
+                ${a.image
+                    ? `<img class="news-card-img" src="${a.image}" alt="${escapeHTML(a.title)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'news-card-img-placeholder',textContent:'⚉'}))">`
+                    : `<div class="news-card-img-placeholder">⚉</div>`
+                }
+                <div class="news-card-body">
+                    <div class="news-card-meta">
+                        <span class="news-card-source">${escapeHTML(a.source)}</span>
+                        <span class="news-card-date">${relativeDate(a.pubDate)}</span>
+                    </div>
+                    <div class="news-card-title">${escapeHTML(a.title)}</div>
+                    ${a.excerpt ? `<div class="news-card-excerpt">${escapeHTML(a.excerpt)}${a.excerpt.length >= 160 ? '…' : ''}</div>` : ''}
+                </div>
+            </a>
+        `).join('');
+    }
+
+    async function loadNews() {
+        const grid = document.getElementById('news-grid');
+        try {
+            const res = await fetch('/api/news');
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to load news');
+
+            _newsArticles = data.articles || [];
+
+            if (data.failedSources && data.failedSources.length) {
+                document.getElementById('news-source-warning').innerHTML =
+                    `<div class="news-source-warning">⚠ Couldn't load: ${data.failedSources.map(escapeHTML).join(', ')}</div>`;
+            }
+
+            renderNewsGrid();
+        } catch (err) {
+            console.error('News load failed:', err);
+            grid.innerHTML = '<div class="news-error">Could not load news right now.</div>';
+        }
+    }
+
+    document.getElementById('news-filters').addEventListener('click', (e) => {
+        const btn = e.target.closest('.news-filter-btn');
+        if (!btn) return;
+        document.querySelectorAll('.news-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _newsFilter = btn.dataset.source;
+        renderNewsGrid();
+    });
+
+    // core.js sets window.onload — override to also call loadNews
+    const _origOnload = window.onload;
+    window.onload = () => {
+        if (_origOnload) _origOnload();
+        loadNews();
+    };
+    </script>
+</body>
+</html>
