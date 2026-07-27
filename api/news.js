@@ -7,6 +7,7 @@ const FEEDS = [
   { source: 'Brickset', url: 'https://brickset.com/feed/' },
   { source: 'Brick Fanatics', url: 'https://www.brickfanatics.com/feed/' },
   { source: 'The Brothers Brick', url: 'https://feeds.feedburner.com/TheBrothersBrick' },
+  { source: "Jay's Brick Blog", url: 'https://jaysbrickblog.com/feed/' },
 ];
 
 // Recurring Brickset filler posts that aren't really "news"
