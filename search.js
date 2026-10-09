@@ -737,6 +737,7 @@ function initSearchClear() {
     const input = document.getElementById('set-input');
     if (!input || input.dataset.clearReady) return;
     input.dataset.clearReady = '1';
+    input.setAttribute('autocomplete', 'off'); // stop Chrome's autofill styling/suggestions
 
     const wrap = document.createElement('div');
     wrap.className = 'search-input-wrap';

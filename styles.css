@@ -1693,6 +1693,18 @@ button:active { transform: translateY(0); }
     .search-input-wrap { width: 100%; }
 }
 
+/* Search box — neutralize browser autofill highlight (Chrome/Safari paint it light blue) */
+#set-input:-webkit-autofill,
+#set-input:-webkit-autofill:hover,
+#set-input:-webkit-autofill:focus,
+#set-input:autofill {
+    -webkit-text-fill-color: var(--text);
+    -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+    box-shadow: 0 0 0 1000px var(--surface) inset;
+    caret-color: var(--text);
+    transition: background-color 9999s ease-out 0s;
+}
+
 /* utility */
 .text-green   { color: var(--green); }
 .text-cyan    { color: var(--cyan); }
