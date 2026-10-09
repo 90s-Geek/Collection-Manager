@@ -730,3 +730,40 @@ async function sotdSaveToWantlist(setNum, themeId) {
     } catch { showToast('Could not save set.', 'error'); }
 }
 
+// --- SEARCH BOX CLEAR (×) BUTTON ---
+// Wraps #set-input and adds a clear button that appears only when the box
+// has text. Esc also clears. Built here so index.html needs no changes.
+function initSearchClear() {
+    const input = document.getElementById('set-input');
+    if (!input || input.dataset.clearReady) return;
+    input.dataset.clearReady = '1';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'search-input-wrap';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+
+    const btn = document.createElement('button');
+    btn.type = 'button'; // don't submit the form
+    btn.className = 'search-clear-btn';
+    btn.setAttribute('aria-label', 'Clear search');
+    btn.title = 'Clear (Esc)';
+    btn.textContent = '×';
+    wrap.appendChild(btn);
+
+    const sync  = () => wrap.classList.toggle('has-value', input.value.length > 0);
+    const clear = () => { input.value = ''; sync(); input.focus(); };
+
+    btn.addEventListener('click', clear);
+    input.addEventListener('input', sync);
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && input.value) { e.preventDefault(); clear(); }
+    });
+    sync();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSearchClear);
+} else {
+    initSearchClear();
+}
