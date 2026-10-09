@@ -1280,26 +1280,25 @@ button:active { transform: translateY(0); }
 .search-results-header {
     text-align: left;
     margin-bottom: 10px;
-    font-family: var(--mono);
-    font-size: 0.78em;
-    color: var(--text-muted);
+    font-size: 0.8em;
+    color: var(--text-dim);
 }
 .search-results-header .query-text { color: var(--cyan); }
 .search-results-header .showing-count { color: var(--text-muted); }
 
 .set-result-img {
     max-width: 250px;
-    border: 1px solid var(--border2);
+    border: 1px solid var(--green-dim);
     border-radius: var(--radius-sm);
     margin-bottom: 4px;
     cursor: pointer;
 }
 .set-result-actions {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
     justify-content: center;
-    margin-top: 12px;
+    margin-top: 10px;
 }
 
 .rebrickable-link { color: var(--cyan); text-decoration: none; }
@@ -1725,6 +1724,55 @@ body #result-container::before {
     pointer-events: none;
 }
 @keyframes resultScan { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+/* --- Search page: classes replacing former inline styles in search.js --- */
+.search-msg { font-family: var(--mono); font-size: 0.9em; margin: 4px 0; }
+.search-msg--error { color: var(--red); }
+.search-msg--empty { color: var(--red); opacity: 0.85; }
+.search-msg--empty strong { color: var(--text); }
+
+.brickeconomy-link { color: var(--amber); text-decoration: none; font-size: 0.9em; }
+.brickeconomy-link:hover { text-decoration: underline; }
+
+.price-paid-field { margin-top: 10px; }
+.price-paid-label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 0.75em;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+}
+.price-paid-row { display: flex; align-items: center; gap: 8px; }
+.price-paid-currency { font-family: var(--mono); color: var(--green); font-size: 1em; }
+.price-paid-input {
+    flex: none;
+    width: 120px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    font-family: var(--mono);
+    font-size: 0.9em;
+    outline: none;
+    transition: border-color var(--transition);
+}
+.price-paid-input:focus { border-color: var(--green-dim); }
+
+.recently-added-empty { color: var(--text-muted); font-size: 0.65em; padding: 4px 2px; }
+
+.sotd-error { color: var(--text-muted); font-size: 0.8em; }
+.sotd-meta-val--small { font-size: 0.78em; }
+.sotd-code {
+    font-size: 0.72em;
+    color: rgba(255,183,48,0.4);
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+}
+.sotd-badge-gap { margin-right: 6px; }
+.sotd-actions { margin-top: 14px; }
+.sotd-btn--link { text-decoration: none; display: inline-flex; align-items: center; }
 
 /* utility */
 .text-green   { color: var(--green); }

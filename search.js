@@ -75,7 +75,7 @@ async function searchBySetNum(input, container) {
         currentSet = { ...setData, theme_name: themeName };
         renderSearchResult(currentSet);
     } catch (err) {
-        container.innerHTML = `<p style="color:red;">${err.message}</p>`;
+        container.innerHTML = `<p class="search-msg search-msg--error">${escapeHTML(err.message)}</p>`;
     }
 }
 
@@ -157,7 +157,7 @@ async function searchByName(query, container) {
         const data = await setRes.json();
 
         if (!data.results || data.results.length === 0) {
-            container.innerHTML = `<p style="color:#ff6666;">No sets found for "<strong>${escapeHTML(query)}</strong>".</p>`;
+            container.innerHTML = `<p class="search-msg search-msg--empty">No sets found for "<strong>${escapeHTML(query)}</strong>".</p>`;
             return;
         }
 
@@ -170,7 +170,7 @@ async function searchByName(query, container) {
 
         renderNameSearchResults(searchAllResults, themeCache, query, data.count);
     } catch (err) {
-        container.innerHTML = `<p style="color:red;">${err.message}</p>`;
+        container.innerHTML = `<p class="search-msg search-msg--error">${escapeHTML(err.message)}</p>`;
     }
 }
 
@@ -191,7 +191,7 @@ async function searchByThemeId(themeId, themeName, container) {
     await Promise.all(themeIds.map(id => fetchTheme(id)));
 
     if (!searchAllResults.length) {
-        container.innerHTML = `<p style="color:#ff6666;">No sets found for theme "<strong>${escapeHTML(themeName)}</strong>".</p>`;
+        container.innerHTML = `<p class="search-msg search-msg--empty">No sets found for theme "<strong>${escapeHTML(themeName)}</strong>".</p>`;
         return;
     }
 
@@ -236,7 +236,7 @@ function renderNameSearchResults(results, themeMap, query, totalCount) {
     const container = document.getElementById('result-container');
     const rows = results.map(set => `
         <li class="search-result-item" onclick="selectSearchResult('${set.set_num}', ${set.theme_id})">
-            <img src="${set.set_img_url || ''}" alt="${set.name}" width="50" loading="lazy" style="border:1px solid #333; flex-shrink:0; background:#fff;">
+            <img src="${set.set_img_url || ''}" alt="${escapeHTML(set.name)}" width="50" loading="lazy" class="search-result-thumb">
             <div class="search-result-info">
                 <strong>${escapeHTML(set.name)}</strong>
                 <span class="search-result-meta">${set.set_num} &nbsp;|&nbsp; ${set.year} &nbsp;|&nbsp; ${themeMap[set.theme_id] || 'Unknown'}</span>
@@ -250,9 +250,9 @@ function renderNameSearchResults(results, themeMap, query, totalCount) {
         : '';
 
     container.innerHTML = `
-        <div style="text-align:left; margin-bottom:10px; font-size:0.8em; color:#888;">
-            > ${_searchTotalCount} result${_searchTotalCount !== 1 ? 's' : ''} for "<span style="color:#00ffff;">${escapeHTML(query)}</span>"
-            &nbsp;<span style="color:#555;">(showing ${results.length})</span>
+        <div class="search-results-header">
+            &gt; ${_searchTotalCount} result${_searchTotalCount !== 1 ? 's' : ''} for "<span class="query-text">${escapeHTML(query)}</span>"
+            &nbsp;<span class="showing-count">(showing ${results.length})</span>
         </div>
         <ul class="search-results-list">${rows}</ul>
         ${loadMoreBtn}
@@ -274,7 +274,7 @@ async function selectSearchResult(setNum, themeId) {
         currentSet = { ...setData, theme_name: themeName };
         renderSearchResult(currentSet);
     } catch (err) {
-        container.innerHTML = `<p style="color:red;">${err.message}</p>`;
+        container.innerHTML = `<p class="search-msg search-msg--error">${escapeHTML(err.message)}</p>`;
     }
 }
 
@@ -366,30 +366,28 @@ function renderSearchResult(set) {
         </div>` : '';
 
     document.getElementById('result-container').innerHTML = `
-        <h2>${set.name}</h2>
+        <h2>${escapeHTML(set.name)}</h2>
         <div class="set-meta">
-            <strong>Year:</strong> ${set.year} | <strong>Theme:</strong> ${set.theme_name} | 
-            <strong>Set #:</strong> <a href="https://rebrickable.com/sets/${set.set_num}/" target="_blank" rel="noopener" style="color:#00ffff;text-decoration:none;" title="View on Rebrickable">${set.set_num} ↗</a>
-            &nbsp;·&nbsp; <a href="${brickEconomyUrl(set.set_num)}" target="_blank" rel="noopener" style="color:#ffaa00;text-decoration:none;font-size:0.9em;" title="Check market value on BrickEconomy">📈 BrickEconomy ↗</a>
+            <strong>Year:</strong> ${set.year} | <strong>Theme:</strong> ${escapeHTML(set.theme_name)} | 
+            <strong>Set #:</strong> <a href="https://rebrickable.com/sets/${set.set_num}/" target="_blank" rel="noopener" class="rebrickable-link" title="View on Rebrickable">${set.set_num} ↗</a>
+            &nbsp;·&nbsp; <a href="${brickEconomyUrl(set.set_num)}" target="_blank" rel="noopener" class="brickeconomy-link" title="Check market value on BrickEconomy">📈 BrickEconomy ↗</a>
         </div>
         ${statusBanner}
         ${priceRowHTML(set.set_num)}
         <div class="search-img-wrap" onclick="openImageLightbox()" title="Click to view details">
-            <img id="search-result-img" src="${set.set_img_url}" alt="${set.name}" style="max-width:250px; border:1px solid #0f0; margin-bottom:4px; cursor:pointer;">
+            <img id="search-result-img" src="${set.set_img_url}" alt="${escapeHTML(set.name)}" class="set-result-img">
             <div class="search-img-hint">🔍 click to enlarge</div>
         </div>
         <p>Parts: ${set.num_parts}</p>
         ${conditionSelectHTML()}
-        <div style="margin-top:10px;">
-            <label style="font-family:var(--mono);font-size:0.75em;color:var(--text-muted);letter-spacing:1px;display:block;margin-bottom:4px;">PRICE PAID (USD) — optional</label>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <span style="font-family:var(--mono);color:var(--green);font-size:1em;">$</span>
-                <input id="price-paid-input" type="number" min="0" step="0.01" placeholder="0.00"
-                    style="background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:6px 10px;font-family:var(--mono);font-size:0.9em;width:120px;outline:none;"
-                    onfocus="this.style.borderColor='var(--green-dim)'" onblur="this.style.borderColor='var(--border2)'">
+        <div class="price-paid-field">
+            <label for="price-paid-input" class="price-paid-label">PRICE PAID (USD) — optional</label>
+            <div class="price-paid-row">
+                <span class="price-paid-currency">$</span>
+                <input id="price-paid-input" class="price-paid-input" type="number" min="0" step="0.01" placeholder="0.00">
             </div>
         </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:10px;">
+        <div class="set-result-actions">
             <button class="save-btn" onclick="saveCurrentSet()">+ ADD TO COLLECTION</button>
             <button class="wantlist-btn" onclick="saveToWantList()">♥ ADD TO WISH LIST</button>
         </div>
@@ -452,7 +450,7 @@ async function loadLastAdded() {
         .select('*').order('created_at', { ascending: false }).limit(RECENTLY_ADDED_COUNT);
 
     if (error || !data || data.length === 0) {
-        container.innerHTML = "<div style='color:#333;font-size:0.65em;padding:4px 2px;'>No sets yet.</div>";
+        container.innerHTML = "<div class='recently-added-empty'>No sets yet.</div>";
         return;
     }
 
@@ -562,7 +560,7 @@ async function loadSetOfTheDay() {
     }
 
     console.error('Set of the Day failed:', lastErr);
-    if (container) container.innerHTML = `<span style="color:#333;font-size:0.8em;">Could not load set of the day.</span>`;
+    if (container) container.innerHTML = `<span class="sotd-error">Could not load set of the day.</span>`;
 }
 
 function renderSetOfTheDay(set) {
@@ -594,15 +592,15 @@ function renderSetOfTheDay(set) {
                         </div>
                         <div class="sotd-meta-divider"></div>
                         <div class="sotd-meta-item">
-                            <span class="sotd-meta-val" style="font-size:0.78em;">${escapeHTML(set.theme_name)}</span>
+                            <span class="sotd-meta-val sotd-meta-val--small">${escapeHTML(set.theme_name)}</span>
                             <span class="sotd-meta-lbl">Theme</span>
                         </div>
                     </div>
-                    <div style="font-size:0.72em;color:#443300;letter-spacing:1px;margin-bottom:14px;">${set.set_num}</div>
-                    ${inCollection ? '<span class="presence-badge presence-badge--collection" style="margin-right:6px;">✓ IN COLLECTION</span>' : ''}
+                    <div class="sotd-code">${set.set_num}</div>
+                    ${inCollection ? '<span class="presence-badge presence-badge--collection sotd-badge-gap">✓ IN COLLECTION</span>' : ''}
                     ${inWantlist   ? '<span class="presence-badge presence-badge--wantlist">♥ IN WISH LIST</span>' : ''}
                 </div>
-                <div class="sotd-actions" style="margin-top:14px;">
+                <div class="sotd-actions">
                     <button class="sotd-btn primary" onclick="selectSotdSet('${set.set_num}', ${set.theme_id})">VIEW SET</button>
                     <button class="sotd-btn" onclick="sotdSaveToCollection('${set.set_num}', ${set.theme_id})">+ COLLECT</button>
                     <button class="sotd-btn" onclick="sotdSaveToWantlist('${set.set_num}', ${set.theme_id})">♥ WISH</button>
@@ -683,7 +681,7 @@ async function loadPartOfTheDay() {
     }
 
     console.error('Part of the Day failed:', lastErr);
-    if (container) container.innerHTML = `<span style="color:#333;font-size:0.8em;">Could not load part of the day.</span>`;
+    if (container) container.innerHTML = `<span class="sotd-error">Could not load part of the day.</span>`;
 }
 
 function renderPartOfTheDay(part) {
@@ -702,14 +700,14 @@ function renderPartOfTheDay(part) {
                     <div class="sotd-name">${escapeHTML(part.name)}</div>
                     <div class="sotd-meta-row">
                         <div class="sotd-meta-item">
-                            <span class="sotd-meta-val" style="font-size:0.78em;">${escapeHTML(part.category_name)}</span>
+                            <span class="sotd-meta-val sotd-meta-val--small">${escapeHTML(part.category_name)}</span>
                             <span class="sotd-meta-lbl">Category</span>
                         </div>
                     </div>
-                    <div style="font-size:0.72em;color:#443300;letter-spacing:1px;margin-bottom:14px;">${part.part_num}</div>
+                    <div class="sotd-code">${part.part_num}</div>
                 </div>
-                <div class="sotd-actions" style="margin-top:14px;">
-                    <a class="sotd-btn primary" href="${part.part_url}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;">VIEW ON REBRICKABLE</a>
+                <div class="sotd-actions">
+                    <a class="sotd-btn primary sotd-btn--link" href="${part.part_url}" target="_blank" rel="noopener">VIEW ON REBRICKABLE</a>
                 </div>
             </div>
         </div>
@@ -733,7 +731,7 @@ async function selectSotdSet(setNum, themeId) {
         currentSet = { ...setData, theme_name: themeName };
         renderSearchResult(currentSet);
     } catch (err) {
-        container.innerHTML = `<p style="color:red;">${err.message}</p>`;
+        container.innerHTML = `<p class="search-msg search-msg--error">${escapeHTML(err.message)}</p>`;
     }
 }
 

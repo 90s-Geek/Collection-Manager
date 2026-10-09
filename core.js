@@ -1,5 +1,5 @@
 // ============================================================
-// core.js — shared across index.html, collection.html, wantlist.html
+// core.js — shared across the site's pages (loaded before each page's own script)
 // Config, Supabase client, toast/nav UI, formatting helpers,
 // filter-state persistence, retail price cache, and the shared
 // image lightbox + item detail modal (used by collection & wantlist).
@@ -38,7 +38,7 @@ const retailPriceCache = {};
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentSet = null;
 
-// --- Search pagination state ---
+// --- Toast Notifications ---
 function showToast(message, type = 'success') {
     // type: 'success' | 'error' | 'warning' | 'info'
     const colors = {
@@ -264,14 +264,15 @@ function brickEconomyUrl(setNum) {
     return `https://www.brickeconomy.com/search?query=${encodeURIComponent(setNum)}`;
 }
 
-// --- Fetch Retail Price via Netlify proxy ---
+// --- Fetch Retail Price via Vercel serverless proxy ---
 // Brickset's API blocks direct browser fetch() calls (no CORS headers).
-// The Netlify function at /.netlify/functions/brickset proxies the call
-// server-side and returns the price fields we need with proper CORS headers.
+// The Vercel function at /api/brickset (api/brickset.js) proxies the call
+// server-side, keeps BRICKSET_API_KEY out of the browser, and returns the
+// LEGO.com US retail price with proper CORS headers.
 async function fetchRetailPrice(setNum) {
     if (setNum in retailPriceCache) return retailPriceCache[setNum];
     try {
-        const url = `/.netlify/functions/brickset?setNumber=${encodeURIComponent(setNum)}`;
+        const url = `/api/brickset?setNumber=${encodeURIComponent(setNum)}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Proxy error ${res.status}`);
         const data = await res.json();
