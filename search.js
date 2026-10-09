@@ -82,19 +82,52 @@ async function searchBySetNum(input, container) {
 // Cache of all Rebrickable themes, loaded once per session
 let allThemesCache = null;
 
+// Themes rarely change, so keep a copy in localStorage for a week.
+// Saves ~900 records of Rebrickable calls on the first name search each session.
+const THEMES_STORAGE_KEY = '90sgeek_themes_v1';
+const THEMES_TTL_MS      = 7 * 24 * 60 * 60 * 1000;
+
+function readStoredThemes() {
+    try {
+        const raw = localStorage.getItem(THEMES_STORAGE_KEY);
+        if (!raw) return null;
+        const { savedAt, themes } = JSON.parse(raw);
+        if (!Array.isArray(themes) || !themes.length) return null;
+        if (Date.now() - savedAt > THEMES_TTL_MS) return null;
+        return themes;
+    } catch { return null; }
+}
+
+function storeThemes(themes) {
+    try {
+        // Keep only the fields we use to keep storage small
+        const slim = themes.map(t => ({ id: t.id, name: t.name, parent_id: t.parent_id ?? null }));
+        localStorage.setItem(THEMES_STORAGE_KEY, JSON.stringify({ savedAt: Date.now(), themes: slim }));
+    } catch { /* storage full or blocked — just skip caching */ }
+}
+
 async function getAllThemes() {
     if (allThemesCache) return allThemesCache;
+
+    const stored = readStoredThemes();
+    if (stored) {
+        allThemesCache = stored;
+        return stored;
+    }
+
     // Fetch all themes across pages (Rebrickable has ~900 themes total)
     let url = `https://rebrickable.com/api/v3/lego/themes/?page_size=500`;
     let all = [];
+    let complete = true;
     while (url) {
         const res = await fetch(url, { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } });
-        if (!res.ok) break;
+        if (!res.ok) { complete = false; break; }
         const data = await res.json();
         all = all.concat(data.results || []);
         url = data.next || null;
     }
     allThemesCache = all;
+    if (complete && all.length) storeThemes(all); // never cache a partial list
     return all;
 }
 
@@ -416,7 +449,7 @@ async function loadLastAdded() {
     const container = document.getElementById('last-added-container');
     if (!container) return;
     const { data, error } = await db.from('lego_collection')
-        .select('*').order('created_at', { ascending: false }).limit(5);
+        .select('*').order('created_at', { ascending: false }).limit(RECENTLY_ADDED_COUNT);
 
     if (error || !data || data.length === 0) {
         container.innerHTML = "<div style='color:#333;font-size:0.65em;padding:4px 2px;'>No sets yet.</div>";
@@ -773,9 +806,26 @@ function placeResultsBelowSearch() {
     if (box && results && box.nextElementSibling !== results) box.after(results);
 }
 
+// --- RECENTLY ADDED SKELETON ---
+// index.html ships 3 placeholder cards but loadLastAdded() shows 5, so the
+// panel jumped when data arrived. Top the placeholders up to match.
+const RECENTLY_ADDED_COUNT = 5;
+
+function padRecentlyAddedSkeleton() {
+    const container = document.getElementById('last-added-container');
+    if (!container) return;
+    const skeletons = container.querySelectorAll('.recently-added-skeleton-item');
+    // Only pad while the placeholders are still showing (data not loaded yet)
+    if (!skeletons.length || container.children.length !== skeletons.length) return;
+    for (let i = skeletons.length; i < RECENTLY_ADDED_COUNT; i++) {
+        container.appendChild(skeletons[0].cloneNode(true));
+    }
+}
+
 function initSearchPage() {
     initSearchClear();
     placeResultsBelowSearch();
+    padRecentlyAddedSkeleton();
 }
 
 if (document.readyState === 'loading') {
