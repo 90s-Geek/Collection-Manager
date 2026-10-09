@@ -763,8 +763,23 @@ function initSearchClear() {
     sync();
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSearchClear);
-} else {
+// --- RESULTS PLACEMENT ---
+// Move the results panel directly under the search box. It stays hidden
+// (display:none) until a search runs, so Set of the Day / Part of the Day
+// sit right below the search box when there are no results.
+function placeResultsBelowSearch() {
+    const box     = document.querySelector('.search-box');
+    const results = document.getElementById('result-container');
+    if (box && results && box.nextElementSibling !== results) box.after(results);
+}
+
+function initSearchPage() {
     initSearchClear();
+    placeResultsBelowSearch();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSearchPage);
+} else {
+    initSearchPage();
 }
