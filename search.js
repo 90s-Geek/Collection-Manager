@@ -245,6 +245,83 @@ async function selectSearchResult(setNum, themeId) {
     }
 }
 
+// ============================================================
+// PRICE ROW
+// Shows LEGO.com list price (via /api/brickset) plus deep-link
+// buttons to LEGO.com, Amazon, and Target for the current set.
+// ============================================================
+
+// Session cache: set_num -> retail price (number) or null (no price on file)
+const listPriceCache = new Map();
+
+// Rebrickable uses "10305-1"; retailers search on the bare number "10305"
+function retailSetNumber(setNum) {
+    return String(setNum).replace(/-\d+$/, '');
+}
+
+function retailerLinks(setNum) {
+    const num = encodeURIComponent(retailSetNumber(setNum));
+    return [
+        { key: 'lego',   label: 'LEGO.com', url: `https://www.lego.com/en-us/search?q=${num}` },
+        { key: 'amazon', label: 'AMAZON',   url: `https://www.amazon.com/s?k=LEGO+${num}` },
+        { key: 'target', label: 'TARGET',   url: `https://www.target.com/s?searchTerm=LEGO+${num}` }
+    ];
+}
+
+function priceRowHTML(setNum) {
+    const buttons = retailerLinks(setNum).map(r => `
+        <a class="price-btn price-btn--${r.key}" href="${r.url}" target="_blank" rel="noopener"
+           title="Check current price on ${r.label}">${r.label} ↗</a>
+    `).join('');
+
+    return `
+        <div class="price-row" data-set="${setNum}">
+            <div class="price-row-list">
+                <span class="price-row-label">LEGO.com LIST</span>
+                <span class="price-row-value" id="list-price-value"><span class="skeleton skeleton-text price-row-skeleton"></span></span>
+            </div>
+            <div class="price-row-btns">${buttons}</div>
+        </div>
+    `;
+}
+
+async function loadListPrice(setNum) {
+    let price;
+    if (listPriceCache.has(setNum)) {
+        price = listPriceCache.get(setNum);
+    } else {
+        try {
+            const res = await fetch(`/api/brickset?setNumber=${encodeURIComponent(setNum)}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const raw = data?.result?.retailPrice;
+            price = (typeof raw === 'number' && raw > 0) ? raw : null;
+            listPriceCache.set(setNum, price);
+        } catch {
+            price = undefined; // lookup failed — don't cache, allow retry on next view
+        }
+    }
+
+    // Guard against a stale response if the user already moved to another set
+    const row = document.querySelector('.price-row');
+    if (!row || row.dataset.set !== setNum) return;
+    const el = document.getElementById('list-price-value');
+    if (!el) return;
+
+    if (typeof price === 'number') {
+        el.textContent = `$${price.toFixed(2)}`;
+        el.classList.remove('price-row-value--none');
+    } else if (price === null) {
+        el.textContent = 'N/A';
+        el.title = 'No LEGO.com list price on file (often means the set is retired)';
+        el.classList.add('price-row-value--none');
+    } else {
+        el.textContent = 'ERR';
+        el.title = 'Could not reach Brickset';
+        el.classList.add('price-row-value--none');
+    }
+}
+
 function renderSearchResult(set) {
     const inCollection = collectionSetNums.has(set.set_num);
     const inWantlist   = wantlistSetNums.has(set.set_num);
@@ -263,6 +340,7 @@ function renderSearchResult(set) {
             &nbsp;·&nbsp; <a href="${brickEconomyUrl(set.set_num)}" target="_blank" rel="noopener" style="color:#ffaa00;text-decoration:none;font-size:0.9em;" title="Check market value on BrickEconomy">📈 BrickEconomy ↗</a>
         </div>
         ${statusBanner}
+        ${priceRowHTML(set.set_num)}
         <div class="search-img-wrap" onclick="openImageLightbox()" title="Click to view details">
             <img id="search-result-img" src="${set.set_img_url}" alt="${set.name}" style="max-width:250px; border:1px solid #0f0; margin-bottom:4px; cursor:pointer;">
             <div class="search-img-hint">🔍 click to enlarge</div>
@@ -285,6 +363,7 @@ function renderSearchResult(set) {
     `;
     const img = document.getElementById('search-result-img');
     if (img) attachImgFallback(img);
+    loadListPrice(set.set_num);
 }
 
 // --- Image Lightbox Gallery ---

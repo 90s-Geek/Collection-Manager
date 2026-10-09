@@ -1567,6 +1567,73 @@ button:active { transform: translateY(0); }
 }
 .recently-added-skeleton-item .skeleton-lines .skeleton-text:last-child { height: 7px; }
 
+/* --- Search result price row --- */
+.price-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 4px auto 14px;
+    padding: 8px 12px;
+    max-width: 520px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--amber);
+    border-radius: var(--radius-sm);
+    font-family: var(--mono);
+}
+.price-row-list {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+.price-row-label {
+    font-size: 0.62em;
+    color: var(--text-muted);
+    letter-spacing: 1.5px;
+}
+.price-row-value {
+    font-size: 1em;
+    font-weight: 700;
+    color: var(--amber);
+    letter-spacing: 0.5px;
+    min-width: 56px;
+}
+.price-row-value--none { color: var(--text-muted); font-weight: 600; font-size: 0.85em; }
+.price-row-skeleton { display: inline-block; width: 56px; height: 12px; vertical-align: middle; }
+
+.price-row-btns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.price-btn {
+    font-size: 0.66em;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 5px 10px;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    white-space: nowrap;
+    transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+.price-btn:hover {
+    color: var(--amber);
+    border-color: rgba(255,183,48,0.45);
+    background: rgba(255,183,48,0.07);
+}
+
+@media (max-width: 600px) {
+    .price-row { flex-direction: column; align-items: stretch; text-align: center; }
+    .price-row-list { justify-content: center; }
+    .price-row-btns { justify-content: center; }
+    .price-btn { flex: 1; text-align: center; }
+}
+
 /* utility */
 .text-green   { color: var(--green); }
 .text-cyan    { color: var(--cyan); }
