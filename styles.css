@@ -237,15 +237,15 @@ button:active { transform: translateY(0); }
     overflow: visible;
 }
 .nav a {
-    color: var(--text-dim);
+    color: var(--text);
     text-decoration: none;
-    padding: 0 16px;
+    padding: 0 18px;
     display: flex;
     align-items: center;
     font-family: var(--mono);
-    font-size: 0.72em;
-    font-weight: 600;
-    letter-spacing: 1.5px;
+    font-size: 0.8em;
+    font-weight: 700;
+    letter-spacing: 1.8px;
     text-transform: uppercase;
     position: relative;
     border-right: none;
@@ -265,9 +265,10 @@ button:active { transform: translateY(0); }
     transform: scaleX(0);
     transition: transform var(--transition);
 }
-.nav a:hover { color: var(--accent); background: var(--accent-glow); text-shadow: none; }
+.nav a:hover { color: var(--accent); background: var(--accent-glow); text-shadow: 0 0 8px var(--accent-glow-strong); }
 .nav a:hover::after { transform: scaleX(0.7); }
-.nav a.active { color: var(--accent); background: var(--accent-glow); }
+.nav a.active { color: var(--accent); background: var(--accent-glow); text-shadow: 0 0 8px var(--accent-glow-strong); }
+.nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .nav a.active::after { transform: scaleX(1); }
 
 .quick-links {
@@ -293,15 +294,15 @@ button:active { transform: translateY(0); }
     display: flex;
     align-items: center;
     gap: 6px;
-    background: transparent;
-    color: var(--text-dim);
+    color: var(--text);
     text-decoration: none;
     font-family: var(--mono);
-    font-size: 0.68em;
-    font-weight: 600;
+    font-size: 0.74em;
+    font-weight: 700;
     text-transform: uppercase;
-    padding: 8px 10px;
-    border: 1px solid var(--border);
+    padding: 9px 10px;
+    border: 1px solid var(--border2);
+    background: rgba(57,232,128,0.03);
     border-radius: var(--radius-sm);
     letter-spacing: 0.8px;
     transition: background var(--transition), color var(--transition), border-color var(--transition), box-shadow var(--transition);
@@ -310,18 +311,19 @@ button:active { transform: translateY(0); }
 }
 .quick-links a::before {
     content: '›';
-    color: var(--text-muted);
+    color: var(--green-dim);
     font-size: 1.1em;
     line-height: 1;
     flex-shrink: 0;
     transition: color var(--transition);
 }
 .quick-links a:hover {
-    background: rgba(57,232,128,0.06);
-    border-color: var(--green-dim);
+    background: rgba(57,232,128,0.1);
+    border-color: var(--green);
     color: var(--green);
-    box-shadow: 0 0 10px rgba(57,232,128,0.07);
+    box-shadow: 0 0 12px rgba(57,232,128,0.15);
 }
+.quick-links a:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .quick-links a:hover::before { color: var(--green); }
 
 .export-btn {
@@ -1710,7 +1712,7 @@ button:active { transform: translateY(0); }
     body { margin-left: calc(var(--sidebar-width) + 28px); }
     .logo { width: 90.625px; height: 90.625px; top: 24.6875px; left: calc(var(--sidebar-width) / 2 - 45.3125px); }
     .quick-links { top: 132px; left: 8px; width: calc(var(--sidebar-width) - 16px); }
-    .quick-links a { font-size: 0.62em; padding: 6px 8px; }
+    .quick-links a { font-size: 0.68em; padding: 7px 8px; }
 }
 
 @media (max-width: 600px) {
