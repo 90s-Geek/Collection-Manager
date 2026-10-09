@@ -1708,6 +1708,24 @@ button:active { transform: translateY(0); }
 /* Search results panel sits between the search box and Set of the Day */
 #result-container { margin-bottom: 24px; }
 
+/* Results panel top edge — same faded, pulsing bar as Set/Part of the Day, in cyan.
+   'body' prefix outranks the inline #result-container rule in index.html. */
+body #result-container {
+    position: relative;
+    overflow: hidden;
+    border-top: 1px solid var(--border2);
+}
+body #result-container::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan) 25%, #9af4ff 50%, var(--cyan) 75%, transparent);
+    animation: resultScan 3s ease-in-out infinite;
+    pointer-events: none;
+}
+@keyframes resultScan { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
 /* utility */
 .text-green   { color: var(--green); }
 .text-cyan    { color: var(--cyan); }
