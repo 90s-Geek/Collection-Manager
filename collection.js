@@ -157,8 +157,8 @@ function renderCollection(data) {
             ? `<span style="font-family:var(--mono);font-size:0.62em;color:#ffaa00;margin-left:4px;border:1px solid #4a3200;padding:1px 5px;border-radius:3px;vertical-align:middle;" title="Market value">📈$${Number(item.market_value).toFixed(2)}</span>`
             : '';
         textDiv.innerHTML = `
-            <strong>${item.name}</strong> (${item.year})${conditionBadge(item.condition)}${priceBadge}${marketBadge}<br>
-            <small style="color:#00ffff;">Theme: ${item.theme}</small>`;
+            <strong>${escapeHTML(item.name ?? '')}</strong> (${escapeHTML(item.year ?? '')})${conditionBadge(item.condition)}${priceBadge}${marketBadge}<br>
+            <small style="color:#00ffff;">Theme: ${escapeHTML(item.theme ?? '')}</small>`;
 
         infoDiv.appendChild(checkbox);
         infoDiv.appendChild(img);
@@ -605,9 +605,7 @@ async function confirmImport() {
         let { set_num, name, theme, year, condition, price_paid, img_url } = row;
         img_url = img_url || null;
         if (!name || !theme || !year || !img_url) {
-            const res = await fetch(`https://rebrickable.com/api/v3/lego/sets/${set_num}/`, {
-                headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
-            });
+            const res = await rebrickableFetch(`lego/sets/${encodeURIComponent(set_num)}/`);
             if (!res.ok) throw new Error('Not found on Rebrickable');
             const data = await res.json();
             name    = name    || data.name;

@@ -157,8 +157,8 @@ function renderWantlist(data) {
 
         const textDiv = document.createElement('div');
         textDiv.innerHTML = `
-            <strong>${item.name}</strong> (${item.year})<br>
-            <small style="color:#00ffff;">Theme: ${item.theme}</small>`;
+            <strong>${escapeHTML(item.name ?? '')}</strong> (${escapeHTML(item.year ?? '')})<br>
+            <small style="color:#00ffff;">Theme: ${escapeHTML(item.theme ?? '')}</small>`;
 
         infoDiv.appendChild(img);
         infoDiv.appendChild(textDiv);
@@ -275,7 +275,7 @@ function moveToCollection(item) {
         <button class="modal-close" onclick="document.getElementById('set-modal').classList.remove('active')">✕</button>
         <h2>→ Move to Collection</h2>
         <div class="modal-img-wrap">
-            <img src="${item.img_url}" alt="${item.name}" id="move-modal-img">
+            <img src="${item.img_url}" alt="${escapeHTML(item.name ?? '')}" id="move-modal-img">
         </div>
         <div style="color:#aaa;font-size:0.88em;margin-bottom:12px;line-height:1.6;">
             <strong style="color:#fff;">${escapeHTML(item.name)}</strong><br>
