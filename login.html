@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>90s Geek — Access Required</title>
-    <link rel="icon" type="image/webp" href="90s_Geek_logo.webp">
+    <link rel="icon" type="image/webp" href="images/90s_Geek_logo.webp">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Pinned to an exact version so a new release can't change the login page without you knowing -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
     <style>
         :root {
             --green:      #39e880;
@@ -84,7 +86,7 @@
             box-shadow: 0 0 30px var(--green-glow), 0 0 60px var(--green-glow), 0 0 90px rgba(57, 232, 128, 0.1);
             animation: logoGlow 3s ease-in-out infinite;
         }
-    
+
         @keyframes logoGlow {
             0%, 100% { box-shadow: 0 0 30px var(--green-glow), 0 0 60px var(--green-glow), 0 0 90px rgba(57, 232, 128, 0.1); }
             50%       { box-shadow: 0 0 40px var(--green-glow), 0 0 80px var(--green-glow), 0 0 120px rgba(57, 232, 128, 0.2); }
@@ -181,10 +183,11 @@
             color: var(--green);
             font-family: var(--mono);
             font-size: 0.95em;
-            letter-spacing: 3px;
+            letter-spacing: 1px;
             outline: none;
             transition: border-color var(--transition), box-shadow var(--transition);
         }
+        .input-group input[type="password"] { letter-spacing: 3px; }
 
         .input-group input:focus {
             border-color: var(--green-dim);
@@ -194,6 +197,16 @@
         .input-group input::placeholder {
             color: var(--text-muted);
             letter-spacing: 2px;
+        }
+
+        /* Keep browser autofill / password managers from painting the fields light blue */
+        .input-group input:-webkit-autofill,
+        .input-group input:-webkit-autofill:hover,
+        .input-group input:-webkit-autofill:focus {
+            -webkit-text-fill-color: var(--green);
+            -webkit-box-shadow: 0 0 0 1000px var(--surface2) inset;
+            caret-color: var(--green);
+            transition: background-color 9999s ease-out 0s;
         }
 
         .btn-login {
@@ -209,17 +222,27 @@
             letter-spacing: 3px;
             text-transform: uppercase;
             cursor: pointer;
-            transition: background var(--transition), box-shadow var(--transition);
+            transition: background var(--transition), box-shadow var(--transition), opacity var(--transition);
             margin-top: 4px;
         }
 
-        .btn-login:hover {
+        .btn-login:hover:not(:disabled) {
             background: var(--green-glow);
             box-shadow: 0 0 16px var(--green-glow);
         }
 
-        .btn-login:active {
+        .btn-login:active:not(:disabled) {
             transform: scale(0.98);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.55;
+            cursor: wait;
+        }
+
+        .btn-login:focus-visible {
+            outline: 2px solid var(--green);
+            outline-offset: 2px;
         }
 
         .error-msg {
@@ -275,57 +298,117 @@
             <div class="dot dot-green"></div>
             <span class="terminal-title">auth_required.sh</span>
         </div>
-        <div class="terminal-body">
+        <form class="terminal-body" id="login-form" novalidate>
             <div class="prompt-line">
                 <span>$</span> ./authenticate --user restricted_area <span class="cursor"></span>
             </div>
             <div class="input-group">
-                <label>Password</label>
-                <input type="password" id="password-input" placeholder="••••••••" autofocus>
+                <label for="email-input">Email</label>
+                <input type="email" id="email-input" name="email" placeholder="you@example.com"
+                       autocomplete="username" autocapitalize="off" spellcheck="false" required autofocus>
             </div>
-            <div class="error-msg" id="error-msg">⚠ Access denied — incorrect password</div>
-            <button class="btn-login" id="login-btn">[ Enter ]</button>
-        </div>
+            <div class="input-group">
+                <label for="password-input">Password</label>
+                <input type="password" id="password-input" name="password" placeholder="••••••••"
+                       autocomplete="current-password" required>
+            </div>
+            <div class="error-msg" id="error-msg" role="alert" aria-live="assertive"></div>
+            <button type="submit" class="btn-login" id="login-btn">[ Enter ]</button>
+        </form>
     </div>
 </div>
 
 <script>
     // -------------------------------------------------------
-    // Simple client-side password gate.
-    // Change the password below to whatever you want.
-    // This is security-by-obscurity — fine for a personal
-    // portfolio site, not for protecting sensitive data.
+    // Supabase Auth login.
+    // The password is checked by Supabase's servers, not in this
+    // page, so nothing secret lives in the source anymore.
+    // The URL and anon key below are meant to be public — what
+    // protects your data is Row Level Security on the tables.
     // -------------------------------------------------------
-    const PASSWORD = 'NewPW2026$';  // <-- change this
+    const SUPABASE_URL = 'https://sgmibyooymrocvojchxu.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnbWlieW9veW1yb2N2b2pjaHh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1Mzk0OTYsImV4cCI6MjA4NzExNTQ5Nn0.nLXsVr6mvsCQJijHsO2wkw49e0J4JZ-2oiLTpKZGmu0';
 
-    const SESSION_KEY = '90sgeek_auth';
+    // Per-tab flag the existing page <head> gates look for. It only
+    // controls the redirect; core.js double-checks the real Supabase
+    // session on every page and sends you back here if it's missing.
+    const AUTH_FLAG = '90sgeek_auth';
 
-    // If already authenticated this session, skip login
-    if (sessionStorage.getItem(SESSION_KEY) === 'true') {
+    const form     = document.getElementById('login-form');
+    const emailEl  = document.getElementById('email-input');
+    const passEl   = document.getElementById('password-input');
+    const btn      = document.getElementById('login-btn');
+    const errMsg   = document.getElementById('error-msg');
+
+    let db = null;
+    try {
+        db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    } catch {
+        showError('⚠ Auth library failed to load — refresh to retry');
+        btn.disabled = true;
+    }
+
+    function enterSite() {
+        try { sessionStorage.setItem(AUTH_FLAG, 'true'); } catch {}
         window.location.replace('index.html');
     }
 
-    const input  = document.getElementById('password-input');
-    const btn    = document.getElementById('login-btn');
-    const errMsg = document.getElementById('error-msg');
-
-    function attemptLogin() {
-        const val = input.value.trim();
-        if (val === PASSWORD) {
-            sessionStorage.setItem(SESSION_KEY, 'true');
-            window.location.replace('index.html');
-        } else {
-            errMsg.classList.remove('visible');
-            void errMsg.offsetWidth; // force reflow to re-trigger animation
-            errMsg.classList.add('visible');
-            input.value = '';
-            input.focus();
-        }
+    function showError(text) {
+        errMsg.textContent = text;
+        errMsg.classList.remove('visible');
+        void errMsg.offsetWidth; // force reflow to re-trigger the flicker animation
+        errMsg.classList.add('visible');
     }
 
-    btn.addEventListener('click', attemptLogin);
-    input.addEventListener('keydown', e => {
-        if (e.key === 'Enter') attemptLogin();
+    function clearError() {
+        errMsg.classList.remove('visible');
+        errMsg.textContent = '';
+    }
+
+    // Already signed in (e.g. a new tab)? Skip straight to the site.
+    // Otherwise make sure no stale flag is left behind.
+    if (db) {
+        db.auth.getSession().then(({ data }) => {
+            if (data?.session) enterSite();
+            else { try { sessionStorage.removeItem(AUTH_FLAG); } catch {} }
+        });
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!db) return;
+        clearError();
+
+        const email    = emailEl.value.trim();
+        const password = passEl.value;
+        if (!email || !password) {
+            showError('⚠ Enter your email and password');
+            (email ? passEl : emailEl).focus();
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = '[ Authenticating… ]';
+
+        try {
+            const { error } = await db.auth.signInWithPassword({ email, password });
+            if (!error) { enterSite(); return; }
+
+            if (error.status === 429) {
+                showError('⚠ Too many attempts — wait a minute and try again');
+            } else if (error.status === 400 || /invalid/i.test(error.message)) {
+                showError('⚠ Access denied — incorrect email or password');
+            } else {
+                showError('⚠ Login failed — ' + error.message);
+            }
+        } catch {
+            showError('⚠ Can’t reach the auth server — check your connection');
+        }
+
+        passEl.value = '';
+        passEl.focus();
+        btn.disabled = false;
+        btn.textContent = '[ Enter ]';
     });
 </script>
 

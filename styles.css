@@ -1774,6 +1774,21 @@ body #result-container::before {
 .sotd-actions { margin-top: 14px; }
 .sotd-btn--link { text-decoration: none; display: inline-flex; align-items: center; }
 
+/* --- Top nav: LOG OUT link (added by core.js) --- */
+.nav a.nav-logout {
+    margin-left: auto;
+    color: var(--text-dim);
+}
+.nav a.nav-logout::after { background: var(--red); box-shadow: 0 0 8px rgba(255,68,102,0.35); }
+.nav a.nav-logout:hover {
+    color: var(--red);
+    background: rgba(255,68,102,0.08);
+    text-shadow: 0 0 8px rgba(255,68,102,0.35);
+}
+@media (max-width: 600px) {
+    .nav a.nav-logout { margin-left: 0; }
+}
+
 /* utility */
 .text-green   { color: var(--green); }
 .text-cyan    { color: var(--cyan); }

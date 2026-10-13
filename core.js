@@ -38,6 +38,48 @@ const retailPriceCache = {};
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentSet = null;
 
+// --- Auth guard (Supabase Auth) ---
+// Each page's <head> does a quick redirect if the per-tab '90sgeek_auth'
+// flag is missing. This is the real check: confirm there's a Supabase
+// session before loading any data. Row Level Security on the tables is
+// what actually blocks anyone without one.
+const AUTH_FLAG = '90sgeek_auth';
+
+function goToLogin() {
+    try { sessionStorage.removeItem(AUTH_FLAG); } catch {}
+    window.location.replace('login.html');
+}
+
+const authReady = db.auth.getSession()
+    .then(({ data }) => {
+        if (!data?.session) { goToLogin(); return false; }
+        return true;
+    })
+    .catch(() => { goToLogin(); return false; });
+
+// Signing out in one tab (or the session expiring) signs out every tab
+db.auth.onAuthStateChange(event => {
+    if (event === 'SIGNED_OUT') goToLogin();
+});
+
+async function signOut() {
+    try { await db.auth.signOut(); } catch {}
+    goToLogin();
+}
+
+// Adds a LOG OUT link to the right end of the top nav on every page
+function renderLogoutLink() {
+    const nav = document.querySelector('.nav');
+    if (!nav || nav.querySelector('.nav-logout')) return;
+    const a = document.createElement('a');
+    a.href = 'login.html';
+    a.className = 'nav-logout';
+    a.textContent = 'LOG OUT';
+    a.title = 'Sign out of 90s Geek';
+    a.addEventListener('click', e => { e.preventDefault(); signOut(); });
+    nav.appendChild(a);
+}
+
 // --- Toast Notifications ---
 function showToast(message, type = 'success') {
     // type: 'success' | 'error' | 'warning' | 'info'
@@ -363,9 +405,12 @@ function debouncedFilter() {
     }, 200);
 }
 
-window.onload = () => {
+window.onload = async () => {
     renderQuickLinks();
+    renderLogoutLink();
     restoreControlsState();
+    // Don't load any data until the Supabase session is confirmed
+    if (!(await authReady)) return;
     // Check if the dashboard container exists (index.html)
     if (document.getElementById('last-added-container')) {
         loadLastAdded();
