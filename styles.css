@@ -1788,6 +1788,11 @@ body #result-container::before {
 @media (max-width: 600px) {
     .nav a.nav-logout { margin-left: 0; }
 }
+/* On the search page the Recently Added column (.right-panel, 200px, z-index 99)
+   covers the right end of the nav — keep LOG OUT clear of it */
+@media (min-width: 1201px) {
+    .right-panel ~ .nav { padding-right: calc(200px + 24px); }
+}
 
 /* utility */
 .text-green   { color: var(--green); }
