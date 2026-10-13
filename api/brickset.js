@@ -1,25 +1,60 @@
 // api/brickset.js
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+// Server-side proxy for Brickset's API: keeps BRICKSET_API_KEY out of the
+// browser and returns only the LEGO.com US retail price for one set.
+//
+// Browser usage: /api/brickset?setNumber=10305-1
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+// Requests must come from the site itself, so other websites can't use this
+// function (and your Brickset quota) through their visitors' browsers.
+// A deterrent, not a lock — a script can fake these headers.
+const ALLOWED_ORIGINS = ['https://www.90sgeek.org', 'https://90sgeek.org'];
+
+function fromOwnSite(req) {
+  if (req.headers['sec-fetch-site'] === 'same-origin') return true;
+  const origin  = req.headers.origin || '';
+  const referer = req.headers.referer || '';
+  return ALLOWED_ORIGINS.includes(origin) ||
+         ALLOWED_ORIGINS.some(o => referer === o || referer.startsWith(o + '/'));
+}
+
+// LEGO set numbers: digits/letters, optional "-variant" (e.g. 10305-1, COMCON001-1)
+const SET_NUMBER = /^[A-Za-z0-9]{1,20}(-\d{1,3})?$/;
+
+export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!fromOwnSite(req)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   const { setNumber } = req.query;
-  if (!setNumber) return res.status(400).json({ error: 'setNumber is required' });
+  if (typeof setNumber !== 'string' || !SET_NUMBER.test(setNumber)) {
+    return res.status(400).json({ error: 'Invalid setNumber' });
+  }
 
   const apiKey = process.env.BRICKSET_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'BRICKSET_API_KEY not configured' });
 
-  const url = `https://brickset.com/api/v3.asmx/getSets?apiKey=${apiKey}&userHash=&params=${encodeURIComponent(JSON.stringify({ setNumber, pageSize: 1 }))}`;
+  const params = encodeURIComponent(JSON.stringify({ setNumber, pageSize: 1 }));
+  const url = `https://brickset.com/api/v3.asmx/getSets?apiKey=${encodeURIComponent(apiKey)}&userHash=&params=${params}`;
 
   try {
     const upstream = await fetch(url);
     if (!upstream.ok) throw new Error(`Brickset returned ${upstream.status}`);
     const data = await upstream.json();
+    if (data.status && data.status !== 'success') throw new Error('Brickset error');
+
     const set = data.sets?.[0];
-    res.json({ result: { retailPrice: set?.LEGOCom?.US?.retailPrice ?? null } });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    // Retail prices almost never change: let Vercel's CDN reuse the answer for
+    // a day (stale for up to a week while refreshing) so repeat lookups don't
+    // hit Brickset at all.
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800');
+    return res.json({ result: { retailPrice: set?.LEGOCom?.US?.retailPrice ?? null } });
+  } catch {
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(502).json({ error: 'Could not reach Brickset' });
   }
 }
