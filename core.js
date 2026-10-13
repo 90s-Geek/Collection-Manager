@@ -236,7 +236,7 @@ function attachImgFallback(imgEl) {
 }
 
 function conditionSelectHTML(selected = '') {
-    return `<select id="condition-select" style="background:#000;color:#00ff00;border:1px solid #00ff00;padding:6px 10px;font-family:'Courier New',monospace;font-size:0.85em;margin-top:10px;width:100%;">
+    return `<select id="condition-select" class="condition-select" aria-label="Set condition">
         <option value="">— Set Condition —</option>
         ${CONDITIONS.map(c => `<option value="${c.value}"${selected === c.value ? ' selected' : ''}>${c.label}</option>`).join('')}
     </select>`;
@@ -609,19 +609,6 @@ async function fetchExtraImages(setNum) {
         }
     } catch {}
 
-    // Try Brickset CDN for a box-back image (known URL pattern, silently ignored if 404)
-    const baseNum = setNum.replace(/-1$/, '');
-    const bricksetCandidates = [
-        { src: `https://images.brickset.com/sets/images/${setNum}.jpg`, label: 'Box' },
-        { src: `https://images.brickset.com/sets/AdditionalImages/${baseNum}-1/`, label: 'Box Back' },
-    ];
-    // Test each Brickset URL and only add ones that actually load
-    for (const candidate of bricksetCandidates) {
-        try {
-            const probe = await fetch(candidate.src, { method: 'HEAD' });
-            if (probe.ok) lbAddImages([candidate]);
-        } catch {}
-    }
 }
 
 async function fetchMinifigs(setNum) {
@@ -782,7 +769,7 @@ function showModal(item) {
         <div style="margin-top:10px;">
             <span class="label">Condition: </span>
             ${conditionSelectHTML(item.condition || '')}
-            <button onclick="updateCondition(${item.id})" style="margin-top:8px;width:100%;background:#00ff00;color:#000;border:none;padding:7px;font-family:'Courier New',monospace;font-weight:bold;cursor:pointer;">UPDATE CONDITION</button>
+            <button onclick="updateCondition(${item.id})" class="condition-update-btn">UPDATE CONDITION</button>
         </div>`;
 
     const beUrl = item.set_num ? brickEconomyUrl(item.set_num) : null;

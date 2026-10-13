@@ -390,12 +390,12 @@ function bulkConditionPrompt() {
     picker.className = 'bulk-condition-picker';
     // Use a unique ID so it never clashes with the modal's condition-select
     picker.innerHTML = `
-        <span style="color:#888;font-size:0.8em;">Set condition for ${bulkSelected.size} sets:</span>
-        <select id="bulk-condition-select" style="background:#000;color:#00ff00;border:1px solid #00ff00;padding:6px 10px;font-family:'Courier New',monospace;font-size:0.85em;margin-top:10px;width:100%;">
+        <span class="bulk-condition-label">Set condition for ${bulkSelected.size} sets:</span>
+        <select id="bulk-condition-select" class="condition-select" aria-label="Condition for selected sets">
             <option value="">— Set Condition —</option>
             ${CONDITIONS.map(c => `<option value="${c.value}">${c.label}</option>`).join('')}
         </select>
-        <button onclick="bulkApplyCondition()" style="background:#00ff00;color:#000;border:none;padding:6px 12px;font-family:'Courier New',monospace;font-weight:bold;cursor:pointer;margin-top:6px;width:100%;">APPLY</button>
+        <button onclick="bulkApplyCondition()" class="condition-update-btn">APPLY</button>
     `;
     const toolbar = document.getElementById('bulk-toolbar');
     toolbar.appendChild(picker);

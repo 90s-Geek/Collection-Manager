@@ -1804,6 +1804,24 @@ body #result-container::before {
 /* Keep the image clear of the close button */
 .lightbox-box { padding-top: 48px; }
 
+/* --- Condition dropdown (detail window, search result, bulk picker) --- */
+.condition-select {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 36px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
+                      linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+.condition-select:hover { border-color: var(--green-dim); }
+.condition-select option { background: var(--surface2); color: var(--text); }
+.condition-update-btn { transition: background var(--transition), box-shadow var(--transition); }
+.condition-update-btn:hover { box-shadow: 0 0 14px rgba(57,232,128,0.25); transform: none; }
+
 /* utility */
 .text-green   { color: var(--green); }
 .text-cyan    { color: var(--cyan); }

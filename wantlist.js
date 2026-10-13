@@ -282,9 +282,9 @@ function moveToCollection(item) {
             <span style="color:#00ffff;">${escapeHTML(item.theme || '')} &nbsp;·&nbsp; ${item.year || ''}</span>
         </div>
         ${conditionSelectHTML('')}
-        <div style="display:flex;gap:8px;margin-top:12px;">
-            <button onclick="confirmMoveToCollection(${item.id})" style="flex:1;background:#00ff00;color:#000;padding:10px;font-family:'Courier New',monospace;font-weight:bold;border:none;cursor:pointer;">✓ MOVE TO COLLECTION</button>
-            <button onclick="document.getElementById('set-modal').classList.remove('active')" style="flex:1;background:none;border:1px solid #333;color:#888;padding:10px;font-family:'Courier New',monospace;cursor:pointer;">CANCEL</button>
+        <div class="modal-action-row">
+            <button onclick="confirmMoveToCollection(${item.id})" class="btn-confirm">✓ MOVE TO COLLECTION</button>
+            <button onclick="document.getElementById('set-modal').classList.remove('active')" class="btn-cancel">CANCEL</button>
         </div>
     `;
     // Attach image fallback
