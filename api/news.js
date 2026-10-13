@@ -38,6 +38,19 @@ function decodeEntities(str) {
     .replace(/&#x([0-9a-fA-F]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)));
 }
 
+// Only allow normal web addresses through. Feed content comes from other
+// sites, so anything else (javascript:, data:, relative junk) is dropped
+// rather than handed to the browser as a clickable link or image.
+function safeUrl(raw, { httpsOnly = false } = {}) {
+  if (!raw) return null;
+  try {
+    const u = new URL(decodeEntities(String(raw).trim()));
+    if (u.protocol === 'https:') return u.href;
+    if (u.protocol === 'http:' && !httpsOnly) return u.href;
+  } catch {}
+  return null;
+}
+
 function stripTags(html) {
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
@@ -98,10 +111,11 @@ function parseFeed(xml, source) {
     const pubDate = pubDateRaw ? new Date(pubDateRaw) : null;
     return {
       title,
-      link: link.trim(),
+      link: safeUrl(link),
       source,
       pubDate: pubDate && !isNaN(pubDate) ? pubDate.toISOString() : null,
-      image: extractImage(block, [contentHtml, descriptionHtml]),
+      // https only: http images would be blocked on an https page anyway
+      image: safeUrl(extractImage(block, [contentHtml, descriptionHtml]), { httpsOnly: true }),
       excerpt: stripTags(excerptSourceHtml).slice(0, 160),
     };
   }).filter(item =>
@@ -136,7 +150,7 @@ async function fetchOgImage(url, timeoutMs = 3500) {
     }
     const match = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
       || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-    return match ? match[1] : null;
+    return match ? safeUrl(match[1], { httpsOnly: true }) : null;
   } catch {
     return null;
   } finally {
