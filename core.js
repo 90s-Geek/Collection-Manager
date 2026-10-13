@@ -343,26 +343,66 @@ function brickEconomyUrl(setNum) {
     return `https://www.brickeconomy.com/search?query=${encodeURIComponent(setNum)}`;
 }
 
-// --- Fetch Retail Price via Vercel serverless proxy ---
+// --- Brickset info via Vercel serverless proxy ---
 // Brickset's API blocks direct browser fetch() calls (no CORS headers).
 // The Vercel function at /api/brickset (api/brickset.js) proxies the call
 // server-side, keeps BRICKSET_API_KEY out of the browser, and returns the
-// LEGO.com US retail price with proper CORS headers.
-async function fetchRetailPrice(setNum) {
-    if (setNum in retailPriceCache) return retailPriceCache[setNum];
+// LEGO.com US retail price plus availability and launch/retirement dates.
+// Resolves to { retailPrice, availability, launchDate, exitDate, found },
+// or undefined if the lookup failed (not cached, so it retries next time).
+const bricksetInfoCache = {};
+async function fetchBricksetInfo(setNum) {
+    if (setNum in bricksetInfoCache) return bricksetInfoCache[setNum];
     try {
-        const url = `/api/brickset?setNumber=${encodeURIComponent(setNum)}`;
-        const res = await fetch(url);
+        const res = await fetch(`/api/brickset?setNumber=${encodeURIComponent(setNum)}`);
         if (!res.ok) throw new Error(`Proxy error ${res.status}`);
-        const data = await res.json();
-        const price = data.result?.retailPrice ?? null;
-        retailPriceCache[setNum] = price ? Number(price) : null;
+        const r = (await res.json()).result || {};
+        const price = Number(r.retailPrice);
+        const info = {
+            retailPrice:  price > 0 ? price : null,
+            availability: r.availability || null,
+            launchDate:   r.launchDate || null,
+            exitDate:     r.exitDate || null,
+            found:        r.found !== false
+        };
+        bricksetInfoCache[setNum] = info;
+        return info;
     } catch {
-        // Lookup failed (network/Brickset hiccup) — don't cache, so the next
-        // view retries instead of showing N/A for the rest of the session.
         return undefined;
     }
-    return retailPriceCache[setNum];
+}
+
+async function fetchRetailPrice(setNum) {
+    if (setNum in retailPriceCache) return retailPriceCache[setNum];
+    const info = await fetchBricksetInfo(setNum);
+    if (info === undefined) return undefined;
+    retailPriceCache[setNum] = info.retailPrice;
+    return info.retailPrice;
+}
+
+// --- Retirement status ---
+// exitDate is 'YYYY-MM-DD' (Brickset's retirement date, or when the set left
+// LEGO.com US). A date in the past = retired; within RETIRING_SOON_DAYS =
+// retiring soon; further out = still available.
+const RETIRING_SOON_DAYS = 180;
+
+function retirementStatus(exitDate) {
+    if (!exitDate) return null;
+    const exit = new Date(`${exitDate}T00:00:00`);
+    if (isNaN(exit)) return null;
+    const days = Math.ceil((exit - new Date()) / 86400000);
+    const when = exit.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    if (days <= 0) return { key: 'retired', days, when, label: 'RETIRED',                       text: `Retired ${when}` };
+    if (days <= RETIRING_SOON_DAYS) return { key: 'soon', days, when, label: `RETIRING ${when.toUpperCase()}`, text: `Retiring ${when}` };
+    return { key: 'active', days, when, label: 'AVAILABLE', text: `Available — expected to retire ${when}` };
+}
+
+// Small badge for list rows; nothing for sets that aren't retiring soon
+function retirementBadge(exitDate) {
+    const s = retirementStatus(exitDate);
+    if (!s || s.key === 'active') return '';
+    const icon = s.key === 'soon' ? '⏳' : '⛔';
+    return `<span class="retire-badge retire-badge--${s.key}" title="${escapeHTML(s.text)}">${icon} ${escapeHTML(s.label)}</span>`;
 }
 
 // Fetch retail prices for an array of set_nums in parallel
@@ -830,6 +870,7 @@ function showModal(item) {
             <div><span class="label">Year: </span><span class="value">${item.year}</span></div>
             <div><span class="label">Theme: </span><span class="value">${escapeHTML(item.theme ?? '')}</span></div>
             ${item.set_num ? `<div><span class="label">Retail (LEGO.com): </span><span class="value" id="modal-retail-price" title="LEGO.com US list price from Brickset">…</span></div>` : ''}
+            ${item.set_num ? `<div><span class="label">Status: </span><span class="value" id="modal-retire-status">…</span></div>` : ''}
             ${!onWantlist && item.condition ? `<div><span class="label">Condition: </span>${conditionBadge(item.condition)}</div>` : ''}
             ${conditionSection}
             ${priceSection}
@@ -839,19 +880,24 @@ function showModal(item) {
     if (img) attachImgFallback(img);
     document.getElementById('set-modal').classList.add('active');
 
-    // Fetch retail price in the background (collection and wish list)
+    // Fetch retail price + retirement status in the background (collection and wish list)
     if (item.set_num) {
-        fetchRetailPrice(item.set_num).then(price => {
-            const el = document.getElementById('modal-retail-price');
-            if (!el) return;
-            if (typeof price === 'number') {
-                el.textContent = `$${price.toFixed(2)}`;
-            } else if (price === null) {
-                el.textContent = 'N/A';
-                el.title = 'No LEGO.com list price on file (often means the set is retired)';
-            } else {
-                el.textContent = 'unavailable';
-                el.title = 'Could not reach Brickset — reopen to retry';
+        fetchBricksetInfo(item.set_num).then(info => {
+            const priceEl  = document.getElementById('modal-retail-price');
+            const statusEl = document.getElementById('modal-retire-status');
+            if (info === undefined) {
+                if (priceEl)  { priceEl.textContent = 'unavailable'; priceEl.title = 'Could not reach Brickset — reopen to retry'; }
+                if (statusEl) statusEl.textContent = 'unavailable';
+                return;
+            }
+            if (priceEl) {
+                if (info.retailPrice != null) priceEl.textContent = `$${info.retailPrice.toFixed(2)}`;
+                else { priceEl.textContent = 'N/A'; priceEl.title = 'No LEGO.com list price on file (often means the set is retired)'; }
+            }
+            if (statusEl) {
+                const s = retirementStatus(info.exitDate);
+                statusEl.textContent = s ? s.text : (info.availability || 'No retirement date on file');
+                statusEl.className = 'value' + (s ? ` retire-text--${s.key}` : '');
             }
         });
     }

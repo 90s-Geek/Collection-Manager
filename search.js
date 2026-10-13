@@ -276,9 +276,6 @@ async function selectSearchResult(setNum, themeId) {
 // buttons to LEGO.com, Amazon, and Target for the current set.
 // ============================================================
 
-// Session cache: set_num -> retail price (number) or null (no price on file)
-const listPriceCache = new Map();
-
 // Rebrickable uses "10305-1"; retailers search on the bare number "10305"
 function retailSetNumber(setNum) {
     return String(setNum).replace(/-\d+$/, '');
@@ -304,6 +301,7 @@ function priceRowHTML(setNum) {
             <div class="price-row-list">
                 <span class="price-row-label">LEGO.com LIST</span>
                 <span class="price-row-value" id="list-price-value"><span class="skeleton skeleton-text price-row-skeleton"></span></span>
+                <span id="list-retire-status"></span>
             </div>
             <div class="price-row-btns">${buttons}</div>
         </div>
@@ -311,21 +309,9 @@ function priceRowHTML(setNum) {
 }
 
 async function loadListPrice(setNum) {
-    let price;
-    if (listPriceCache.has(setNum)) {
-        price = listPriceCache.get(setNum);
-    } else {
-        try {
-            const res = await fetch(`/api/brickset?setNumber=${encodeURIComponent(setNum)}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            const raw = data?.result?.retailPrice;
-            price = (typeof raw === 'number' && raw > 0) ? raw : null;
-            listPriceCache.set(setNum, price);
-        } catch {
-            price = undefined; // lookup failed — don't cache, allow retry on next view
-        }
-    }
+    // Shared with the details window via core.js (cached per page load)
+    const info  = await fetchBricksetInfo(setNum);
+    const price = info === undefined ? undefined : info.retailPrice;
 
     // Guard against a stale response if the user already moved to another set
     const row = document.querySelector('.price-row');
@@ -345,6 +331,8 @@ async function loadListPrice(setNum) {
         el.title = 'Could not reach Brickset';
         el.classList.add('price-row-value--none');
     }
+    const retireEl = document.getElementById('list-retire-status');
+    if (retireEl && info) retireEl.innerHTML = retirementBadge(info.exitDate);
 }
 
 function renderSearchResult(set) {

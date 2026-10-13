@@ -47,6 +47,68 @@ async function loadWantlist() {
     restoreFilterState();
     initWantlistDrag(); // Set up drag delegation once
     applyWantlistControls();
+    refreshWantlistBrickset(); // fill in / refresh prices + retirement dates in the background
+}
+
+// --- Prices & retirement dates (Brickset) ---
+// Each wish list row stores retail_price, availability, exit_date and
+// brickset_checked_at. Rows older than BRICKSET_REFRESH_DAYS (or never
+// checked) are refreshed a few at a time, so after the first visit the page
+// loads instantly and Brickset is only asked about stale sets.
+const BRICKSET_REFRESH_DAYS = 7;
+let bricksetCanSave = true; // false if the new columns haven't been added yet
+
+function isBricksetStale(item) {
+    if (!item.set_num) return false;
+    if (!item.brickset_checked_at) return true;
+    return (Date.now() - new Date(item.brickset_checked_at)) > BRICKSET_REFRESH_DAYS * 86400000;
+}
+
+async function refreshWantlistBrickset() {
+    const stale = wantlistCache.filter(isBricksetStale);
+    if (!stale.length) return;
+
+    const statusEl = document.getElementById('collection-count');
+    let done = 0;
+    let rerenderTimer = null;
+    const scheduleRender = () => {
+        clearTimeout(rerenderTimer);
+        rerenderTimer = setTimeout(applyWantlistControls, 250);
+    };
+
+    async function worker(queue) {
+        while (queue.length) {
+            const item = queue.shift();
+            const info = await fetchBricksetInfo(item.set_num);
+            done++;
+            if (statusEl) statusEl.dataset.progress = `updating prices ${done}/${stale.length}`;
+            if (info === undefined) continue; // Brickset hiccup — try again next visit
+
+            const update = {
+                retail_price: info.retailPrice,
+                availability: info.availability,
+                exit_date: info.exitDate,
+                brickset_checked_at: new Date().toISOString()
+            };
+            Object.assign(item, update);
+            scheduleRender();
+
+            if (bricksetCanSave) {
+                const { error } = await db.from('lego_wantlist').update(update).eq('id', item.id);
+                if (error) {
+                    // Most likely the columns don't exist yet — keep showing values,
+                    // just stop trying to save them this visit.
+                    bricksetCanSave = false;
+                    console.warn('Wish list price columns missing — run the SQL migration.', error.message);
+                }
+            }
+        }
+    }
+
+    const queue = [...stale];
+    await Promise.all([worker(queue), worker(queue), worker(queue)]); // 3 at a time
+    if (statusEl) delete statusEl.dataset.progress;
+    applyWantlistControls();
 }
 
 function applyWantlistControls() {
@@ -75,9 +137,14 @@ function applyWantlistControls() {
         // Keep the order from wantlistCache (already sorted by sort_order from DB load)
     } else {
         results.sort((a, b) => {
+            // Price and retirement date: sets without a value always go last
+            if (sortCol === 'retail_price' || sortCol === 'exit_date') {
+                const aMissing = a[sortCol] == null, bMissing = b[sortCol] == null;
+                if (aMissing || bMissing) return aMissing === bMissing ? 0 : (aMissing ? 1 : -1);
+            }
             let valA = a[sortCol] ?? '';
             let valB = b[sortCol] ?? '';
-            if (sortCol === 'year') { valA = Number(valA); valB = Number(valB); }
+            if (sortCol === 'year' || sortCol === 'retail_price') { valA = Number(valA); valB = Number(valB); }
             if (sortCol === 'created_at') { valA = new Date(valA); valB = new Date(valB); }
             if (valA < valB) return sortDir === 'asc' ? -1 : 1;
             if (valA > valB) return sortDir === 'asc' ? 1 : -1;
@@ -99,14 +166,21 @@ function renderWantlist(data) {
     if (countEl) {
         const total = wantlistCache.length;
         const showing = data.length;
+        const priced = data.filter(i => i.retail_price != null);
+        const sum = priced.reduce((s, i) => s + Number(i.retail_price), 0);
+        const totalHtml = priced.length
+            ? `&nbsp;·&nbsp;<span class="wl-total" title="${priced.length} of ${showing} sets have a LEGO.com list price">$${sum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>&nbsp;retail`
+            : '';
+        const progress = countEl.dataset.progress ? `&nbsp;<span class="wl-progress">(${escapeHTML(countEl.dataset.progress)}…)</span>` : '';
         if (total === 0) {
             countEl.innerHTML = '';
         } else if (showing === total) {
-            countEl.innerHTML = `> <span>${total}</span>&nbsp;set${total !== 1 ? 's' : ''} on wish list`;
+            countEl.innerHTML = `> <span>${total}</span>&nbsp;set${total !== 1 ? 's' : ''} on wish list${totalHtml}${progress}`;
         } else {
-            countEl.innerHTML = `> Showing&nbsp;<span>${showing}</span>&nbsp;of&nbsp;<span>${total}</span>&nbsp;sets`;
+            countEl.innerHTML = `> Showing&nbsp;<span>${showing}</span>&nbsp;of&nbsp;<span>${total}</span>&nbsp;sets${totalHtml}${progress}`;
         }
     }
+    renderRetirementAlert();
 
     list.innerHTML = '';
     list.classList.remove('grid-view');
@@ -157,7 +231,7 @@ function renderWantlist(data) {
 
         const textDiv = document.createElement('div');
         textDiv.innerHTML = `
-            <strong>${escapeHTML(item.name ?? '')}</strong> (${escapeHTML(item.year ?? '')})<br>
+            <strong>${escapeHTML(item.name ?? '')}</strong> (${escapeHTML(item.year ?? '')})${item.retail_price != null ? `<span class="wl-price-badge" title="LEGO.com list price">$${Number(item.retail_price).toFixed(2)}</span>` : ''}${retirementBadge(item.exit_date)}<br>
             <small style="color:#00ffff;">Theme: ${escapeHTML(item.theme ?? '')}</small>`;
 
         infoDiv.appendChild(img);
@@ -267,6 +341,31 @@ function initWantlistDrag() {
         });
         dragSrcId = null;
     });
+}
+
+// Banner above the list: sets retiring soon (and ones already retired)
+function renderRetirementAlert() {
+    let el = document.getElementById('retire-alert');
+    const soon = [], retired = [];
+    wantlistCache.forEach(i => {
+        const s = retirementStatus(i.exit_date);
+        if (s?.key === 'soon') soon.push({ i, s });
+        else if (s?.key === 'retired') retired.push({ i, s });
+    });
+    if (!soon.length && !retired.length) { el?.remove(); return; }
+
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'retire-alert';
+        el.className = 'retire-alert';
+        document.querySelector('.collection-meta-row')?.before(el);
+    }
+    soon.sort((a, b) => a.s.days - b.s.days);
+    const names = arr => arr.map(({ i, s }) => `<span class="retire-alert-set">${escapeHTML(i.name ?? i.set_num)} <em>(${escapeHTML(s.when)})</em></span>`).join(', ');
+    el.innerHTML = [
+        soon.length    ? `<div class="retire-alert-line retire-alert-line--soon">⏳ ${soon.length} set${soon.length !== 1 ? 's' : ''} retiring soon: ${names(soon)}</div>` : '',
+        retired.length ? `<div class="retire-alert-line retire-alert-line--retired">⛔ ${retired.length} already retired: ${names(retired)}</div>` : ''
+    ].join('');
 }
 
 function moveToCollection(item) {

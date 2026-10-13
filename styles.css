@@ -1822,6 +1822,54 @@ body #result-container::before {
 .condition-update-btn { transition: background var(--transition), box-shadow var(--transition); }
 .condition-update-btn:hover { box-shadow: 0 0 14px rgba(57,232,128,0.25); transform: none; }
 
+/* --- Wish list prices & retirement alerts --- */
+.wl-price-badge {
+    font-family: var(--mono);
+    font-size: 0.62em;
+    color: var(--amber);
+    margin-left: 6px;
+    border: 1px solid rgba(255,183,48,0.4);
+    padding: 1px 6px;
+    border-radius: 3px;
+    vertical-align: middle;
+}
+.retire-badge {
+    font-family: var(--mono);
+    font-size: 0.6em;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 50px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+.retire-badge--soon    { color: var(--amber); background: rgba(255,183,48,0.12); border: 1px solid rgba(255,183,48,0.5); }
+.retire-badge--retired { color: var(--red);   background: rgba(255,68,102,0.10); border: 1px solid rgba(255,68,102,0.45); }
+.price-row #list-retire-status .retire-badge { font-size: 0.68em; }
+.retire-text--soon    { color: var(--amber) !important; }
+.retire-text--retired { color: var(--red) !important; }
+
+.wl-total    { color: var(--amber) !important; }
+.wl-progress { color: var(--text-dim); font-size: 0.9em; }
+
+.retire-alert {
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    background: rgba(255,183,48,0.06);
+    border: 1px solid rgba(255,183,48,0.3);
+    border-left: 3px solid var(--amber);
+    border-radius: var(--radius-sm);
+    font-family: var(--mono);
+    font-size: 0.74em;
+    line-height: 1.6;
+    color: var(--text);
+}
+.retire-alert-line--soon    { color: var(--amber); }
+.retire-alert-line--retired { color: var(--red); margin-top: 4px; }
+.retire-alert-set  { color: var(--text); }
+.retire-alert-set em { font-style: normal; color: var(--text-dim); }
+
 /* utility */
 .text-green   { color: var(--green); }
 .text-cyan    { color: var(--cyan); }
