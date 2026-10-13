@@ -505,8 +505,8 @@
 
         document.getElementById('theme-count-label').textContent = `${sorted.length} themes total`;
         document.getElementById('theme-chart').innerHTML = top.map(([theme, count], i) => `
-            <div class="bar-row" data-tip="${theme}: ${count} set${count !== 1 ? 's' : ''}">
-                <div class="bar-label">${theme}</div>
+            <div class="bar-row" data-tip="${escapeHTML(theme)}: ${count} set${count !== 1 ? 's' : ''}">
+                <div class="bar-label">${escapeHTML(theme)}</div>
                 <div class="bar-track">
                     <div class="bar-fill ${colors[i]}" style="width:${(count/max*100).toFixed(1)}%;animation-delay:${i*40}ms"></div>
                 </div>
@@ -583,10 +583,10 @@
         document.getElementById('condition-modal-list').innerHTML = items.length
             ? items.map((item, i) => `
                 <div class="recent-item" style="animation:fadeSlideIn 0.25s ease ${Math.min(i * 20, 400)}ms both;cursor:pointer;" onclick="window.location.href='collection.html?edit=${item.id}'" title="Click to edit this set">
-                    <img src="${item.img_url || ''}" alt="${item.name}"
+                    <img src="${escapeHTML(item.img_url || '')}" alt="${escapeHTML(item.name ?? '')}"
                          onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'38\\' height=\\'30\\'><rect width=\\'38\\' height=\\'30\\' fill=\\'%23111\\'/></svg>'">
-                    <div class="recent-item-name">${item.name}</div>
-                    <div class="recent-item-meta">${item.theme || '—'} · ${item.year || '—'}</div>
+                    <div class="recent-item-name">${escapeHTML(item.name ?? '')}</div>
+                    <div class="recent-item-meta">${escapeHTML(item.theme || '—')} · ${escapeHTML(item.year || '—')}</div>
                 </div>
             `).join('')
             : '<div class="stats-loading">No sets in this category</div>';
@@ -609,10 +609,10 @@
         }
         document.getElementById('recent-list').innerHTML = recent.map((item, i) => `
             <div class="recent-item" style="animation:fadeSlideIn 0.3s ease ${i*40}ms both">
-                <img src="${item.img_url || ''}" alt="${item.name}"
+                <img src="${escapeHTML(item.img_url || '')}" alt="${escapeHTML(item.name ?? '')}"
                      onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'38\\' height=\\'30\\'><rect width=\\'38\\' height=\\'30\\' fill=\\'%23111\\'/></svg>'">
-                <div class="recent-item-name">${item.name}</div>
-                <div class="recent-item-meta">${item.theme || '—'} · ${item.year || '—'}</div>
+                <div class="recent-item-name">${escapeHTML(item.name ?? '')}</div>
+                <div class="recent-item-meta">${escapeHTML(item.theme || '—')} · ${escapeHTML(item.year || '—')}</div>
                 <div class="recent-item-date">${relativeDate(item.created_at)}</div>
             </div>
         `).join('');
@@ -678,8 +678,8 @@
         document.getElementById('value-theme-label').textContent = `top ${sortedThemes.length} by market value`;
         document.getElementById('value-theme-chart').innerHTML = sortedThemes.length
             ? sortedThemes.map(([theme, val], i) => `
-                <div class="bar-row" data-tip="${theme}: ${fmtMoney(val)} market value">
-                    <div class="bar-label">${theme}</div>
+                <div class="bar-row" data-tip="${escapeHTML(theme)}: ${fmtMoney(val)} market value">
+                    <div class="bar-label">${escapeHTML(theme)}</div>
                     <div class="bar-track">
                         <div class="bar-fill ${colors[i]}" style="width:${(val/maxVal*100).toFixed(1)}%;animation-delay:${i*40}ms"></div>
                     </div>
@@ -704,10 +704,10 @@
                 return `
                     <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);margin-bottom:5px;animation:fadeSlideIn 0.3s ease ${idx*40}ms both;">
                         <span style="font-family:var(--mono);font-size:0.65em;color:var(--text-muted);min-width:18px;">${idx+1}.</span>
-                        <img src="${item.img_url||''}" alt="${item.name}" width="36" style="height:28px;object-fit:contain;background:#fff;border-radius:3px;flex-shrink:0;" onerror="this.style.display='none'">
+                        <img src="${escapeHTML(item.img_url||'')}" alt="${escapeHTML(item.name ?? '')}" width="36" style="height:28px;object-fit:contain;background:#fff;border-radius:3px;flex-shrink:0;" onerror="this.style.display='none'">
                         <div style="flex:1;min-width:0;">
-                            <div style="font-family:var(--sans);font-size:0.85em;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.name}</div>
-                            <div style="font-family:var(--mono);font-size:0.65em;color:var(--text-muted);">${item.theme||'—'} · ${item.year||'—'}</div>
+                            <div style="font-family:var(--sans);font-size:0.85em;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHTML(item.name ?? '')}</div>
+                            <div style="font-family:var(--mono);font-size:0.65em;color:var(--text-muted);">${escapeHTML(item.theme||'—')} · ${escapeHTML(item.year||'—')}</div>
                         </div>
                         <div style="text-align:right;flex-shrink:0;">
                             <div style="font-family:var(--mono);font-size:0.9em;color:#ffaa00;font-weight:700;">$${marketVal.toFixed(2)}</div>

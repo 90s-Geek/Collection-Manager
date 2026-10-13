@@ -189,10 +189,10 @@
         }
 
         grid.innerHTML = filtered.map((a, i) => `
-            <a class="news-card" data-source="${escapeHTML(a.source)}" href="${a.link}" target="_blank" rel="noopener"
+            <a class="news-card" data-source="${escapeHTML(a.source)}" href="${escapeHTML(a.link)}" target="_blank" rel="noopener"
                style="animation-delay:${Math.min(i, 12) * 30}ms">
                 ${a.image
-                    ? `<img class="news-card-img" src="${a.image}" alt="${escapeHTML(a.title)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'news-card-img-placeholder',textContent:'⚉'}))">`
+                    ? `<img class="news-card-img" src="${escapeHTML(a.image)}" alt="${escapeHTML(a.title)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'news-card-img-placeholder',textContent:'⚉'}))">`
                     : `<div class="news-card-img-placeholder">⚉</div>`
                 }
                 <div class="news-card-body">
