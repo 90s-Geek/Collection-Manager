@@ -358,7 +358,9 @@ async function fetchRetailPrice(setNum) {
         const price = data.result?.retailPrice ?? null;
         retailPriceCache[setNum] = price ? Number(price) : null;
     } catch {
-        retailPriceCache[setNum] = null;
+        // Lookup failed (network/Brickset hiccup) — don't cache, so the next
+        // view retries instead of showing N/A for the rest of the session.
+        return undefined;
     }
     return retailPriceCache[setNum];
 }
@@ -802,7 +804,6 @@ function showModal(item) {
                     placeholder="0.00"
                     style="background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:6px 10px;font-family:var(--mono);font-size:0.9em;width:120px;outline:none;"
                     onfocus="this.style.borderColor='var(--green-dim)'" onblur="this.style.borderColor='var(--border2)'">
-                <span id="modal-retail-price" style="font-family:var(--mono);font-size:0.7em;color:var(--text-muted);"></span>
             </div>
             <button onclick="updatePricePaid(${item.id})" style="width:100%;background:transparent;color:var(--green);border:1px solid var(--green-dim);padding:7px;font-family:var(--mono);font-size:0.75em;font-weight:bold;cursor:pointer;border-radius:var(--radius-sm);letter-spacing:1px;transition:background 0.2s;" onmouseover="this.style.background='rgba(0,255,136,0.08)'" onmouseout="this.style.background='transparent'">UPDATE PRICE</button>
         </div>
@@ -840,7 +841,8 @@ function showModal(item) {
         <div class="modal-meta">
             <div><span class="label">Set #: </span><span class="value">${setNumDisplay}</span></div>
             <div><span class="label">Year: </span><span class="value">${item.year}</span></div>
-            <div><span class="label">Theme: </span><span class="value">${item.theme}</span></div>
+            <div><span class="label">Theme: </span><span class="value">${escapeHTML(item.theme ?? '')}</span></div>
+            ${item.set_num ? `<div><span class="label">Retail (LEGO.com): </span><span class="value" id="modal-retail-price" title="LEGO.com US list price from Brickset">…</span></div>` : ''}
             ${!onWantlist && item.condition ? `<div><span class="label">Condition: </span>${conditionBadge(item.condition)}</div>` : ''}
             ${conditionSection}
             ${priceSection}
@@ -850,13 +852,19 @@ function showModal(item) {
     if (img) attachImgFallback(img);
     document.getElementById('set-modal').classList.add('active');
 
-    // Fetch retail price in background and show next to input
-    if (!onWantlist && item.set_num) {
+    // Fetch retail price in the background (collection and wish list)
+    if (item.set_num) {
         fetchRetailPrice(item.set_num).then(price => {
             const el = document.getElementById('modal-retail-price');
-            if (el) {
-                el.textContent = price != null ? `Retail: $${price.toFixed(2)}` : 'Retail: N/A';
-                el.title = 'Original retail price (USD) from Brickset';
+            if (!el) return;
+            if (typeof price === 'number') {
+                el.textContent = `$${price.toFixed(2)}`;
+            } else if (price === null) {
+                el.textContent = 'N/A';
+                el.title = 'No LEGO.com list price on file (often means the set is retired)';
+            } else {
+                el.textContent = 'unavailable';
+                el.title = 'Could not reach Brickset — reopen to retry';
             }
         });
     }
