@@ -262,7 +262,7 @@ async function selectSearchResult(setNum, themeId) {
         const setData = await setRes.json();
 
         // fetchTheme uses cache — no extra API call if already fetched during search
-        const themeName = await fetchTheme(themeId);
+        const themeName = await fetchTheme(themeId || setData.theme_id); // callers like Recently Added pass 0
         currentSet = { ...setData, theme_name: themeName };
         renderSearchResult(currentSet);
     } catch (err) {
@@ -711,7 +711,7 @@ async function selectSotdSet(setNum, themeId) {
         const setRes = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`);
         if (!setRes.ok) throw new Error('Set not found.');
         const setData = await setRes.json();
-        const themeName = await fetchTheme(themeId);
+        const themeName = await fetchTheme(themeId || setData.theme_id); // callers like Recently Added pass 0
         currentSet = { ...setData, theme_name: themeName };
         renderSearchResult(currentSet);
     } catch (err) {
@@ -723,7 +723,7 @@ async function sotdSaveToCollection(setNum, themeId) {
     try {
         const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`);
         const setData = await res.json();
-        const themeName = await fetchTheme(themeId);
+        const themeName = await fetchTheme(themeId || setData.theme_id); // callers like Recently Added pass 0
         currentSet = { ...setData, theme_name: themeName };
         await saveCurrentSet();
         renderSetOfTheDay({ ...currentSet, theme_name: themeName });
@@ -734,7 +734,7 @@ async function sotdSaveToWantlist(setNum, themeId) {
     try {
         const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`);
         const setData = await res.json();
-        const themeName = await fetchTheme(themeId);
+        const themeName = await fetchTheme(themeId || setData.theme_id); // callers like Recently Added pass 0
         currentSet = { ...setData, theme_name: themeName };
         await saveToWantList();
         renderSetOfTheDay({ ...currentSet, theme_name: themeName });
