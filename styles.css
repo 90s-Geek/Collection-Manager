@@ -1794,6 +1794,16 @@ body #result-container::before {
     .right-panel ~ .nav { padding-right: calc(200px + 24px); }
 }
 
+/* --- Lightbox polish --- */
+/* Close button was painting underneath the image panel */
+.lightbox-close { z-index: 3; }
+/* Hide the empty counter pill when there's only one image */
+.lightbox-img-counter:empty { display: none; }
+/* Hide prev/next arrows when there's nothing to page to */
+.lightbox-img-wrap:has(.lightbox-img-nav.prev:disabled):has(.lightbox-img-nav.next:disabled) .lightbox-img-nav { display: none; }
+/* Keep the image clear of the close button */
+.lightbox-box { padding-top: 48px; }
+
 /* utility */
 .text-green   { color: var(--green); }
 .text-cyan    { color: var(--cyan); }
