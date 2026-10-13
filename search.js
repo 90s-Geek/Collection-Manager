@@ -65,9 +65,7 @@ async function searchLego() {
 async function searchBySetNum(input, container) {
     const setNum = input.includes('-') ? input : `${input}-1`;
     try {
-        const setRes = await fetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`, {
-            headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
-        });
+        const setRes = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`);
         if (!setRes.ok) throw new Error("Set not found.");
         const setData = await setRes.json();
 
@@ -120,7 +118,7 @@ async function getAllThemes() {
     let all = [];
     let complete = true;
     while (url) {
-        const res = await fetch(url, { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } });
+        const res = await rebrickableFetch(url);
         if (!res.ok) { complete = false; break; }
         const data = await res.json();
         all = all.concat(data.results || []);
@@ -139,9 +137,7 @@ async function searchByName(query, container) {
         // Fetch all themes and set name search in parallel
         const [allThemes, setRes] = await Promise.all([
             getAllThemes(),
-            fetch(`https://rebrickable.com/api/v3/lego/sets/?search=${encodeURIComponent(query)}&page_size=20&ordering=-year`, {
-                headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
-            })
+            rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/?search=${encodeURIComponent(query)}&page_size=20&ordering=-year`)
         ]);
 
         const themeMatch = allThemes.find(t => t.name.toLowerCase() === q)
@@ -180,7 +176,7 @@ async function searchByThemeId(themeId, themeName, container) {
     searchAllResults = [];
 
     const url = `https://rebrickable.com/api/v3/lego/sets/?theme_id=${themeId}&page_size=20&ordering=-year`;
-    const res = await fetch(url, { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } });
+    const res = await rebrickableFetch(url);
     if (!res.ok) throw new Error("Theme search failed.");
     const data = await res.json();
 
@@ -203,9 +199,7 @@ async function loadMoreSearchResults() {
     const btn = document.getElementById('load-more-btn');
     if (btn) { btn.textContent = '⟳ LOADING...'; btn.disabled = true; }
     try {
-        const res = await fetch(searchNextUrl, {
-            headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
-        });
+        const res = await rebrickableFetch(searchNextUrl);
         if (!res.ok) throw new Error("Load more failed.");
         const data = await res.json();
         searchNextUrl = data.next || null;
@@ -263,9 +257,7 @@ async function selectSearchResult(setNum, themeId) {
     const container = document.getElementById('result-container');
     container.innerHTML = '<p>Loading set details...</p>';
     try {
-        const setRes = await fetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`, {
-            headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
-        });
+        const setRes = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`);
         if (!setRes.ok) throw new Error("Set not found.");
         const setData = await setRes.json();
 
@@ -535,10 +527,7 @@ async function loadSetOfTheDay() {
     for (const offset of pageOffsets) {
         const page = ((dayOfYear + offset) % totalPages) + 1;
         try {
-            const res = await fetch(
-                `https://rebrickable.com/api/v3/lego/sets/?page=${page}&page_size=10&min_parts=50&ordering=set_num`,
-                { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } }
-            );
+            const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/?page=${page}&page_size=10&min_parts=50&ordering=set_num`);
             if (!res.ok) throw new Error(`API error ${res.status}`);
             const data = await res.json();
             const candidates = data.results || [];
@@ -656,10 +645,7 @@ async function loadPartOfTheDay() {
     for (const offset of pageOffsets) {
         const page = ((dayOfYear + offset) % totalPages) + 1;
         try {
-            const res = await fetch(
-                `https://rebrickable.com/api/v3/lego/parts/?page=${page}&page_size=15&ordering=part_num`,
-                { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } }
-            );
+            const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/parts/?page=${page}&page_size=15&ordering=part_num`);
             if (!res.ok) throw new Error(`API error ${res.status}`);
             const data = await res.json();
             const candidates = (data.results || []).filter(p => p.part_img_url);
@@ -722,9 +708,7 @@ async function selectSotdSet(setNum, themeId) {
     container.innerHTML = '<p>Loading set details...</p>';
     container.scrollIntoView({ behavior: 'smooth', block: 'start' });
     try {
-        const setRes = await fetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`, {
-            headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
-        });
+        const setRes = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`);
         if (!setRes.ok) throw new Error('Set not found.');
         const setData = await setRes.json();
         const themeName = await fetchTheme(themeId);
@@ -737,9 +721,7 @@ async function selectSotdSet(setNum, themeId) {
 
 async function sotdSaveToCollection(setNum, themeId) {
     try {
-        const res = await fetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`, {
-            headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
-        });
+        const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`);
         const setData = await res.json();
         const themeName = await fetchTheme(themeId);
         currentSet = { ...setData, theme_name: themeName };
@@ -750,9 +732,7 @@ async function sotdSaveToCollection(setNum, themeId) {
 
 async function sotdSaveToWantlist(setNum, themeId) {
     try {
-        const res = await fetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`, {
-            headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
-        });
+        const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`);
         const setData = await res.json();
         const themeName = await fetchTheme(themeId);
         currentSet = { ...setData, theme_name: themeName };

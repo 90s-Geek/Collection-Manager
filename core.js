@@ -27,9 +27,46 @@ document.querySelectorAll('.nav a, .logo').forEach(el => {
 });
 
 // --- CONFIGURATION ---
-const REBRICKABLE_API_KEY = '05a143eb0b36a4439e8118910912d050';
+// Rebrickable key now lives only on the server (Vercel env var
+// REBRICKABLE_API_KEY, used by api/rebrickable.js). This empty placeholder
+// stays so any older page script that still mentions it doesn't crash.
+const REBRICKABLE_API_KEY = '';
 const SUPABASE_URL = 'https://sgmibyooymrocvojchxu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnbWlieW9veW1yb2N2b2pjaHh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1Mzk0OTYsImV4cCI6MjA4NzExNTQ5Nn0.nLXsVr6mvsCQJijHsO2wkw49e0J4JZ-2oiLTpKZGmu0';
+
+// --- Rebrickable via server proxy ---
+// All Rebrickable calls go to /api/rebrickable, which adds the secret key
+// server-side. Pass either a full Rebrickable API URL (including the 'next'
+// links Rebrickable returns for paging) or a path like 'lego/sets/10305-1/'.
+const REBRICKABLE_API_BASE = 'https://rebrickable.com/api/v3/';
+
+function rebrickableProxyUrl(pathOrUrl) {
+    const u = new URL(pathOrUrl, REBRICKABLE_API_BASE);
+    if (!u.href.startsWith(REBRICKABLE_API_BASE)) throw new Error('Not a Rebrickable API URL');
+    const qs = new URLSearchParams(u.search);
+    qs.set('path', u.pathname.slice('/api/v3/'.length));
+    return `/api/rebrickable?${qs.toString()}`;
+}
+
+function rebrickableFetch(pathOrUrl, init = {}) {
+    const { headers, ...rest } = init; // never send auth headers from the browser
+    return fetch(rebrickableProxyUrl(pathOrUrl), rest);
+}
+
+// Safety net: if any other page script (collection, wish list, stats,
+// CSV import) still calls Rebrickable directly, quietly reroute it
+// through the proxy instead of letting it fail without a key.
+(() => {
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+        const url = typeof input === 'string' ? input : (input && input.url);
+        if (url && url.startsWith(REBRICKABLE_API_BASE)) {
+            const { headers, ...rest } = init || {};
+            return nativeFetch(rebrickableProxyUrl(url), rest);
+        }
+        return nativeFetch(input, init);
+    };
+})();
 
 // --- Retail Price Cache (Brickset) ---
 // Keyed by set_num → retail price in USD (or null if unavailable)
@@ -336,9 +373,7 @@ async function prefetchRetailPrices(setNums) {
 async function fetchTheme(id) {
     if (themeCache[id]) return themeCache[id];
     try {
-        const r = await fetch(`https://rebrickable.com/api/v3/lego/themes/${id}/`, {
-            headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
-        });
+        const r = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/themes/${id}/`);
         const t = await r.json();
         themeCache[id] = t.name || "Unknown";
     } catch {
@@ -352,9 +387,7 @@ const partCategoryCache = {};
 async function fetchPartCategory(id) {
     if (partCategoryCache[id]) return partCategoryCache[id];
     try {
-        const r = await fetch(`https://rebrickable.com/api/v3/lego/part_categories/${id}/`, {
-            headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
-        });
+        const r = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/part_categories/${id}/`);
         const t = await r.json();
         partCategoryCache[id] = t.name || "Unknown";
     } catch {
@@ -564,9 +597,7 @@ async function openImageLightbox() {
 async function fetchExtraImages(setNum) {
     // Try alternates (MOC builds) — these have images and are linked to the set
     try {
-        const res = await fetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/alternates/?page_size=12`, {
-            headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
-        });
+        const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/alternates/?page_size=12`);
         if (res.ok) {
             const data = await res.json();
             const imgs = (data.results || [])
@@ -595,9 +626,7 @@ async function fetchMinifigs(setNum) {
     const countEl = document.getElementById('lightbox-minifig-count');
     const gridEl  = document.getElementById('lightbox-minifigs');
     try {
-        const res = await fetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/minifigs/?page_size=50`, {
-            headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
-        });
+        const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/minifigs/?page_size=50`);
         if (!res.ok) throw new Error();
         const data = await res.json();
         const count = data.count ?? 0;
@@ -653,8 +682,8 @@ async function openItemLightbox(item) {
 async function fetchItemLightboxData(setNum) {
     // Fetch set details (for parts count) and minifigs simultaneously
     const [setRes, minifigRes] = await Promise.allSettled([
-        fetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`, { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } }),
-        fetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/minifigs/?page_size=50`, { headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` } })
+        rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`),
+        rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/minifigs/?page_size=50`)
     ]);
 
     const partsEl = document.getElementById('lightbox-parts-count');
