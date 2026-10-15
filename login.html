@@ -342,7 +342,10 @@
 
     let db = null;
     try {
-        db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Session lives in sessionStorage → signed out when the tab/window closes.
+        // Must match the setting in core.js.
+        try { localStorage.removeItem('sb-sgmibyooymrocvojchxu-auth-token'); } catch {}
+        db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true } });
     } catch {
         showError('⚠ Auth library failed to load — refresh to retry');
         btn.disabled = true;

@@ -72,7 +72,11 @@ function rebrickableFetch(pathOrUrl, init = {}) {
 // Keyed by set_num → retail price in USD (or null if unavailable)
 const retailPriceCache = {};
 
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Keep the login in sessionStorage so it's cleared when the browser tab or
+// window is closed. (Supabase's default is localStorage, which stays signed in
+// indefinitely.) Also remove any session left over from the old setting.
+try { localStorage.removeItem('sb-sgmibyooymrocvojchxu-auth-token'); } catch {}
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true } });
 let currentSet = null;
 
 // --- Auth guard (Supabase Auth) ---
