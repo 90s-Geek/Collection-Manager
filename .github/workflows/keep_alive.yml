@@ -2,17 +2,30 @@ name: Keep Supabase Awake
 
 on:
   schedule:
-    # Runs at 00:00 UTC every day
-    - cron: '0 0 * * *'
-  workflow_dispatch: # Allows you to trigger it manually for testing
+    # Every 3 days at 12:17 UTC (well inside Supabase's 7-day pause window).
+    # Off-the-hour minute because GitHub delays/drops many :00 jobs.
+    - cron: '17 12 */3 * *'
+  workflow_dispatch: # Lets you run it by hand from the Actions tab
 
 jobs:
   ping_supabase:
     runs-on: ubuntu-latest
     steps:
-      - name: Query lego_collection table
+      - name: Query the database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          curl -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/lego_collection?select=*&limit=1" \
-          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
-          -I
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::SUPABASE_URL or SUPABASE_ANON_KEY secret is missing (repo Settings → Secrets and variables → Actions)"
+            exit 1
+          fi
+          # A real GET (not HEAD) so the database actually runs a query.
+          # Row Level Security means this returns [] — that still counts as activity.
+          # --fail makes the job go red if Supabase answers with an error.
+          curl --fail --show-error --silent \
+            "$SUPABASE_URL/rest/v1/lego_collection?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+          echo
+          echo "Supabase responded OK at $(date -u)"
