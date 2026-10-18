@@ -194,6 +194,17 @@ async function searchByThemeId(themeId, themeName, container) {
     renderNameSearchResults(searchAllResults, themeCache, `Theme: ${themeName}`, data.count);
 }
 
+// Re-draw the current result list without losing the user's scroll spot
+// (used after Load More and after a quick-add changes a row's badges).
+function rerenderSearchList() {
+    const container = document.getElementById('result-container');
+    const scrollEl  = container.querySelector('.search-results-list');
+    const scrollTop = scrollEl ? scrollEl.scrollTop : 0;
+    renderNameSearchResults(searchAllResults, themeCache, searchQuery, null /* keep original count */);
+    const newScrollEl = container.querySelector('.search-results-list');
+    if (newScrollEl) newScrollEl.scrollTop = scrollTop;
+}
+
 async function loadMoreSearchResults() {
     if (!searchNextUrl) return;
     const btn = document.getElementById('load-more-btn');
@@ -209,13 +220,7 @@ async function loadMoreSearchResults() {
         const themeIds = [...new Set(data.results.map(s => s.theme_id))];
         await Promise.all(themeIds.map(id => fetchTheme(id)));
 
-        // Re-render all accumulated results but preserve existing scroll
-        const container = document.getElementById('result-container');
-        const scrollEl  = container.querySelector('.search-results-list');
-        const scrollTop = scrollEl ? scrollEl.scrollTop : 0;
-        renderNameSearchResults(searchAllResults, themeCache, searchQuery, null /* keep original count */);
-        const newScrollEl = container.querySelector('.search-results-list');
-        if (newScrollEl) newScrollEl.scrollTop = scrollTop;
+        rerenderSearchList();
     } catch (err) {
         if (btn) { btn.textContent = 'LOAD MORE'; btn.disabled = false; }
         showToast('Could not load more results.', 'error');
@@ -224,6 +229,20 @@ async function loadMoreSearchResults() {
 
 // Keep the displayed total count across load-more calls
 let _searchTotalCount = 0;
+
+// Quick-add buttons for one result row. A set that's already saved shows
+// a filled, disabled button instead of an add button.
+function quickAddButtonsHTML(setNum) {
+    const inCol = collectionSetNums.has(setNum);
+    const inWl  = wantlistSetNums.has(setNum);
+    const colBtn = inCol
+        ? `<button type="button" class="quick-add-btn quick-add-btn--collection is-done" disabled title="Already in your collection" aria-label="Already in your collection">✓</button>`
+        : `<button type="button" class="quick-add-btn quick-add-btn--collection" onclick="quickAdd('collection', '${setNum}', event)" title="Add to collection" aria-label="Add to collection">+</button>`;
+    const wlBtn = inWl
+        ? `<button type="button" class="quick-add-btn quick-add-btn--wishlist is-done" disabled title="Already on your wish list" aria-label="Already on your wish list">♥</button>`
+        : `<button type="button" class="quick-add-btn quick-add-btn--wishlist" onclick="quickAdd('wishlist', '${setNum}', event)" title="Add to wish list" aria-label="Add to wish list">♡</button>`;
+    return `<div class="quick-add">${colBtn}${wlBtn}</div>`;
+}
 
 function renderNameSearchResults(results, themeMap, query, totalCount) {
     if (totalCount !== null) _searchTotalCount = totalCount;
@@ -236,6 +255,7 @@ function renderNameSearchResults(results, themeMap, query, totalCount) {
                 <span class="search-result-meta">${set.set_num} &nbsp;|&nbsp; ${set.year} &nbsp;|&nbsp; ${themeMap[set.theme_id] || 'Unknown'}</span>
                 ${presenceBadge(set.set_num)}
             </div>
+            ${quickAddButtonsHTML(set.set_num)}
         </li>
     `).join('');
 
@@ -251,6 +271,58 @@ function renderNameSearchResults(results, themeMap, query, totalCount) {
         <ul class="search-results-list">${rows}</ul>
         ${loadMoreBtn}
     `;
+}
+
+// --- QUICK ADD (from the results list) ---
+// Saves a set straight from its result row using the data the search
+// already returned — no extra Rebrickable call. Condition and price paid
+// are left blank; set them later from the Collection page if you want.
+async function quickAdd(kind, setNum, ev) {
+    if (ev) ev.stopPropagation(); // don't also open the set's detail view
+    const btn = ev && ev.currentTarget;
+
+    const set = searchAllResults.find(s => s.set_num === setNum);
+    if (!set) return;
+
+    const isCol = kind === 'collection';
+    const table = isCol ? 'lego_collection' : 'lego_wantlist';
+    const saved = isCol ? collectionSetNums : wantlistSetNums;
+    const where = isCol ? 'your collection' : 'your wish list';
+
+    if (saved.has(setNum)) { showToast(`"${set.name}" is already in ${where}!`, 'warning'); return; }
+
+    if (btn) { btn.disabled = true; btn.classList.add('is-busy'); }
+
+    try {
+        // Double-check the database in case it was added in another tab
+        const { data: existing, error: checkError } = await db
+            .from(table).select('id').eq('set_num', setNum).limit(1);
+        if (checkError) throw checkError;
+        if (existing && existing.length) {
+            saved.add(setNum);
+            showToast(`"${set.name}" is already in ${where}!`, 'warning');
+            rerenderSearchList();
+            return;
+        }
+
+        const themeName = themeCache[set.theme_id] || await fetchTheme(set.theme_id);
+        const { error } = await db.from(table).insert([{
+            set_num: set.set_num,
+            name:    set.name,
+            img_url: set.set_img_url,
+            year:    set.year,
+            theme:   themeName && themeName !== 'Unknown' ? themeName : null
+        }]);
+        if (error) throw error;
+
+        saved.add(setNum);
+        showToast(isCol ? `Added "${set.name}" to collection!` : `Added "${set.name}" to wish list!`, 'success');
+        rerenderSearchList();
+        if (isCol) loadLastAdded();
+    } catch (err) {
+        showToast('Database Error: ' + (err.message || 'could not save'), 'error');
+        if (btn) { btn.disabled = false; btn.classList.remove('is-busy'); }
+    }
 }
 
 async function selectSearchResult(setNum, themeId) {
@@ -348,7 +420,7 @@ function renderSearchResult(set) {
     document.getElementById('result-container').innerHTML = `
         <h2>${escapeHTML(set.name)}</h2>
         <div class="set-meta">
-            <strong>Year:</strong> ${set.year} | <strong>Theme:</strong> ${escapeHTML(set.theme_name)} | 
+            <strong>Year:</strong> ${set.year} | <strong>Theme:</strong> ${escapeHTML(set.theme_name)} |
             <strong>Set #:</strong> <a href="https://rebrickable.com/sets/${set.set_num}/" target="_blank" rel="noopener" class="rebrickable-link" title="View on Rebrickable">${set.set_num} ↗</a>
             &nbsp;·&nbsp; <a href="${brickEconomyUrl(set.set_num)}" target="_blank" rel="noopener" class="brickeconomy-link" title="Check market value on BrickEconomy">📈 BrickEconomy ↗</a>
         </div>
@@ -403,9 +475,9 @@ async function saveCurrentSet() {
     const pricePaidRaw = document.getElementById('price-paid-input')?.value || '';
     const pricePaid = pricePaidRaw !== '' ? parseFloat(pricePaidRaw) : null;
 
-    const { error } = await db.from('lego_collection').insert([{ 
-        set_num: currentSet.set_num, 
-        name: currentSet.name, 
+    const { error } = await db.from('lego_collection').insert([{
+        set_num: currentSet.set_num,
+        name: currentSet.name,
         img_url: currentSet.set_img_url,
         year: currentSet.year,
         theme: currentSet.theme_name,
@@ -436,14 +508,16 @@ async function loadLastAdded() {
 
     container.innerHTML = data.map(item => `
         <div class="recently-added-item" onclick="selectSotdSet('${item.set_num}', 0)" title="${escapeHTML(item.name)}">
-            <img src="${item.img_url || ''}" alt="${escapeHTML(item.name)}"
-                 onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'36\' height=\'28\'><rect width=\'36\' height=\'28\' fill=\'%23111\'/></svg>'">
+            <img src="${item.img_url || ''}" alt="${escapeHTML(item.name)}">
             <div class="recently-added-item-text">
                 <div class="recently-added-item-name">${escapeHTML(item.name)}</div>
                 <div class="recently-added-item-meta">${item.theme || '-'} · ${item.year || '-'}</div>
             </div>
         </div>
     `).join('');
+    // Broken thumbnails get the shared placeholder (the old inline onerror
+    // had nested quotes that made it a syntax error, so it never ran)
+    container.querySelectorAll('img').forEach(attachImgFallback);
 }
 
 
@@ -489,10 +563,17 @@ function isSotdExcluded(themeName) {
     return SOTD_EXCLUDE_THEMES.some(ex => lower.includes(ex));
 }
 
-async function loadSetOfTheDay() {
+// --- SPIN AGAIN ---
+// 0 = today's real pick. Each spin bumps this and re-runs the same
+// date-seeded math with a different offset, so today's pick stays the
+// same for everyone/every reload and spins are just extras for this visit.
+let sotdSpin = 0;
+let sotdSpinning = false;
+
+async function loadSetOfTheDay(spin = 0) {
     const container = document.getElementById('sotd-container');
     const dateLabel = document.getElementById('sotd-date');
-    if (!container) return;
+    if (!container) return false;
 
     const now = new Date();
     if (dateLabel) {
@@ -507,13 +588,15 @@ async function loadSetOfTheDay() {
     // then use day % 10 to pick which candidate within the page.
     // If a page happens to be dominated by excluded themes, retry on a
     // few nearby pages before giving up.
+    // A spin shifts both the page and the candidate (prime steps so
+    // consecutive spins land far apart and don't repeat quickly).
     const totalPages = 200;
-    const candidateIdx = dayOfYear % 10;
+    const candidateIdx = (dayOfYear + spin * 3) % 10;
     const pageOffsets = [0, 50, 100];
 
     let lastErr = null;
     for (const offset of pageOffsets) {
-        const page = ((dayOfYear + offset) % totalPages) + 1;
+        const page = ((dayOfYear + offset + spin * 37) % totalPages) + 1;
         try {
             const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/?page=${page}&page_size=10&min_parts=50&ordering=set_num`);
             if (!res.ok) throw new Error(`API error ${res.status}`);
@@ -530,14 +613,63 @@ async function loadSetOfTheDay() {
 
             const set = valid[candidateIdx % valid.length];
             renderSetOfTheDay({ ...set, theme_name: themeCache[set.theme_id] || 'Unknown' });
-            return;
+            return true;
         } catch (err) {
             lastErr = err;
         }
     }
 
     console.error('Set of the Day failed:', lastErr);
-    if (container) container.innerHTML = `<span class="sotd-error">Could not load set of the day.</span>`;
+    // A failed spin keeps the set already on screen; only the first load shows an error
+    if (spin === 0 && container) container.innerHTML = `<span class="sotd-error">Could not load set of the day.</span>`;
+    return false;
+}
+
+async function spinSetOfTheDay(dir = 1) {
+    if (sotdSpinning) return;
+    const prev = sotdSpin;
+    sotdSpin = dir === 0 ? 0 : sotdSpin + 1; // set first so the card's badge is right
+    sotdSpinning = true;
+    const section = document.getElementById('sotd-section');
+    section?.classList.add('is-spinning');
+    updateSpinControls();
+
+    const ok = await loadSetOfTheDay(sotdSpin);
+    if (!ok) {
+        sotdSpin = prev; // the previous set is still on screen
+        showToast('Could not spin — try again in a moment.', 'error');
+    }
+
+    sotdSpinning = false;
+    section?.classList.remove('is-spinning');
+    updateSpinControls();
+}
+
+// Adds the SPIN AGAIN / TODAY'S PICK buttons to the Set of the Day header
+function initSotdSpin() {
+    const header = document.querySelector('#sotd-section .sotd-header');
+    if (!header || header.querySelector('.sotd-spin')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'sotd-spin';
+    wrap.innerHTML = `
+        <button type="button" class="sotd-spin-btn sotd-spin-btn--today" onclick="spinSetOfTheDay(0)" title="Go back to today's pick" hidden>↺ TODAY'S PICK</button>
+        <button type="button" class="sotd-spin-btn" id="sotd-spin-btn" onclick="spinSetOfTheDay(1)" title="Show a different random set">⟳ SPIN AGAIN</button>
+    `;
+    header.appendChild(wrap);
+    updateSpinControls();
+}
+
+function updateSpinControls() {
+    const spinBtn  = document.getElementById('sotd-spin-btn');
+    const todayBtn = document.querySelector('.sotd-spin-btn--today');
+    if (spinBtn) {
+        spinBtn.disabled = sotdSpinning;
+        spinBtn.textContent = sotdSpinning ? '⟳ SPINNING…' : '⟳ SPIN AGAIN';
+    }
+    if (todayBtn) {
+        todayBtn.hidden = sotdSpin === 0;
+        todayBtn.disabled = sotdSpinning;
+    }
 }
 
 function renderSetOfTheDay(set) {
@@ -546,12 +678,13 @@ function renderSetOfTheDay(set) {
 
     const inCollection = collectionSetNums.has(set.set_num);
     const inWantlist   = wantlistSetNums.has(set.set_num);
+    const badge = sotdSpin > 0 ? `⟳ SPIN #${sotdSpin}` : '⚄ DAILY PICK';
 
     container.innerHTML = `
         <div class="sotd-body">
             <div class="sotd-img-panel" onclick="selectSotdSet('${set.set_num}', ${set.theme_id})" title="Click to view set details">
                 <img id="sotd-img" src="${set.set_img_url || ''}" alt="${escapeHTML(set.name)}">
-                <span class="sotd-badge">⚄ DAILY PICK</span>
+                <span class="sotd-badge">${badge}</span>
                 <span class="sotd-enlarge-hint">🔍 click to view</span>
             </div>
             <div class="sotd-info-panel">
@@ -792,6 +925,7 @@ function initSearchPage() {
     initSearchClear();
     placeResultsBelowSearch();
     padRecentlyAddedSkeleton();
+    initSotdSpin();
 }
 
 if (document.readyState === 'loading') {
