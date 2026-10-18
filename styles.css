@@ -853,14 +853,11 @@ button:active { transform: translateY(0); }
     animation: modalIn 0.18s ease both;
     box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,229,255,0.04);
 }
-/* Top edge — same faded, pulsing bar as Set of the Day, kept in cyan.
-   Sticky so it stays pinned to the top while the window scrolls. */
+/* Top edge — 2px cyan line that fades out at both ends, like Set of the Day */
 .lightbox-box::before {
     content: '';
-    position: sticky;
-    display: block;
-    top: 0;
-    margin: -28px -24px 26px;
+    position: absolute;
+    top: 0; left: 0; right: 0;
     height: 2px;
     background: linear-gradient(90deg, transparent, var(--cyan) 25%, #9af4ff 50%, var(--cyan) 75%, transparent);
     animation: resultScan 3s ease-in-out infinite;
@@ -1816,7 +1813,6 @@ body #result-container::before {
 .lightbox-img-wrap:has(.lightbox-img-nav.prev:disabled):has(.lightbox-img-nav.next:disabled) .lightbox-img-nav { display: none; }
 /* Keep the image clear of the close button */
 .lightbox-box { padding-top: 48px; }
-.lightbox-box::before { margin-top: -48px; margin-bottom: 46px; }
 
 /* --- Condition dropdown (detail window, search result, bulk picker) --- */
 .condition-select {
