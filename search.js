@@ -14,12 +14,79 @@ let collectionSetNums = new Set();
 let wantlistSetNums   = new Set();
 
 async function loadPresenceCache() {
+    // theme + market_value come along so the stats strip needs no extra query
     const [colRes, wlRes] = await Promise.all([
-        db.from('lego_collection').select('set_num'),
+        db.from('lego_collection').select('set_num, theme, market_value'),
         db.from('lego_wantlist').select('set_num')
     ]);
     collectionSetNums = new Set((colRes.data || []).map(r => r.set_num));
     wantlistSetNums   = new Set((wlRes.data  || []).map(r => r.set_num));
+
+    homeStats.col     = colRes.data || [];
+    homeStats.wlCount = (wlRes.data || []).length;
+    homeStats.failed  = !!(colRes.error || wlRes.error);
+    renderStatsStrip();
+}
+
+// ============================================================
+// STATS STRIP (top of the home page)
+// Sets · Themes · Market value · Wish list — each tile links to the
+// page with the details. Built from the same query as the presence cache.
+// ============================================================
+const homeStats = { col: [], wlCount: 0, failed: false };
+
+function initStatsStrip() {
+    const h1 = document.querySelector('h1');
+    if (!h1 || document.getElementById('stats-strip')) return;
+    const strip = document.createElement('div');
+    strip.id = 'stats-strip';
+    strip.className = 'stats-strip';
+    strip.setAttribute('aria-label', 'Collection summary');
+    strip.innerHTML = Array.from({ length: 4 }, () => `
+        <div class="stats-tile stats-tile--loading">
+            <div class="skeleton stats-tile-skel-val"></div>
+            <div class="skeleton skeleton-text short"></div>
+        </div>`).join('');
+    h1.after(strip);
+}
+
+function fmtStatMoney(v) {
+    if (v >= 10000) return `$${(v / 1000).toFixed(0)}k`;
+    if (v >= 1000)  return `$${(v / 1000).toFixed(1)}k`;
+    return `$${Math.round(v).toLocaleString()}`;
+}
+
+function renderStatsStrip() {
+    const strip = document.getElementById('stats-strip');
+    if (!strip) return;
+
+    const col     = homeStats.col;
+    const themes  = new Set(col.map(i => i.theme).filter(Boolean)).size;
+    const valued  = col.filter(i => i.market_value != null);
+    const value   = valued.reduce((sum, i) => sum + Number(i.market_value), 0);
+    const dash    = homeStats.failed ? '—' : null;
+
+    const tiles = [
+        { href: 'collection.html', key: 'sets',   val: dash ?? col.length.toLocaleString(),           label: col.length === 1 ? 'Set' : 'Sets', sub: 'in collection' },
+        { href: 'stats.html',      key: 'themes', val: dash ?? themes.toLocaleString(),               label: themes === 1 ? 'Theme' : 'Themes', sub: 'collected' },
+        { href: 'stats.html',      key: 'value',  val: dash ?? (valued.length ? fmtStatMoney(value) : '—'), label: 'Market value',
+          sub: valued.length ? `${valued.length} of ${col.length} sets valued` : 'add values in Collection' },
+        { href: 'wantlist.html',   key: 'wish',   val: dash ?? homeStats.wlCount.toLocaleString(),    label: 'Wish list', sub: homeStats.wlCount === 1 ? 'set wanted' : 'sets wanted' },
+    ];
+
+    strip.innerHTML = tiles.map(t => `
+        <a class="stats-tile stats-tile--${t.key}" href="${t.href}">
+            <span class="stats-tile-val">${t.val}</span>
+            <span class="stats-tile-label">${t.label}</span>
+            <span class="stats-tile-sub">${escapeHTML(t.sub)}</span>
+        </a>`).join('');
+}
+
+// Keep the strip current after a save, without re-querying
+function noteSavedForStats(kind, set) {
+    if (kind === 'collection') homeStats.col.push({ set_num: set.set_num, theme: set.theme || null, market_value: null });
+    else homeStats.wlCount++;
+    renderStatsStrip();
 }
 
 function presenceBadge(setNum) {
@@ -316,6 +383,7 @@ async function quickAdd(kind, setNum, ev) {
         if (error) throw error;
 
         saved.add(setNum);
+        noteSavedForStats(isCol ? 'collection' : 'wishlist', { set_num: setNum, theme: themeName });
         showToast(isCol ? `Added "${set.name}" to collection!` : `Added "${set.name}" to wish list!`, 'success');
         rerenderSearchList();
         if (isCol) loadLastAdded();
@@ -489,6 +557,7 @@ async function saveCurrentSet() {
         showToast("Database Error: " + error.message, 'error');
     } else {
         collectionSetNums.add(currentSet.set_num); // Update presence cache instantly
+        noteSavedForStats('collection', { set_num: currentSet.set_num, theme: currentSet.theme_name });
         showToast("Added to collection!", 'success');
         renderSearchResult(currentSet); // Refresh to show badge
         loadLastAdded(); // Refresh dashboard after save
@@ -546,6 +615,7 @@ async function saveToWantList() {
     if (error) { showToast("Database Error: " + error.message, 'error'); }
     else {
         wantlistSetNums.add(currentSet.set_num); // Update presence cache instantly
+        noteSavedForStats('wishlist', currentSet);
         showToast("Added to wish list!", 'success');
         renderSearchResult(currentSet); // Refresh to show badge
     }
@@ -975,6 +1045,7 @@ function padRecentlyAddedSkeleton() {
 }
 
 function initSearchPage() {
+    initStatsStrip();
     initSearchClear();
     placeResultsBelowSearch();
     padRecentlyAddedSkeleton();

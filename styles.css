@@ -2004,3 +2004,75 @@ body #result-container::before {
 @media (max-width: 600px) {
     .sotd-header { flex-wrap: wrap; gap: 8px; }
 }
+
+/* --- Home page stats strip (built by search.js) --- */
+.stats-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: -8px 0 20px;
+}
+.stats-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 12px 14px 11px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+    transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+.stats-tile::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 2px;
+    background: var(--tile-color, var(--green));
+    opacity: 0.55;
+    transition: opacity var(--transition);
+}
+.stats-tile--sets   { --tile-color: var(--green); }
+.stats-tile--themes { --tile-color: var(--cyan); }
+.stats-tile--value  { --tile-color: var(--amber); }
+.stats-tile--wish   { --tile-color: var(--magenta); }
+a.stats-tile:hover {
+    border-color: var(--tile-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+}
+a.stats-tile:hover::after { opacity: 1; }
+a.stats-tile:focus-visible { outline: 2px solid var(--tile-color); outline-offset: 2px; }
+.stats-tile-val {
+    font-family: var(--mono);
+    font-size: 1.35em;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: 0.5px;
+    color: var(--tile-color);
+    white-space: nowrap;
+}
+.stats-tile-label {
+    font-family: var(--mono);
+    font-size: 0.6em;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+.stats-tile-sub {
+    font-family: var(--mono);
+    font-size: 0.58em;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.stats-tile--loading { gap: 8px; }
+.stats-tile-skel-val { height: 20px; width: 55%; }
+@media (max-width: 600px) {
+    .stats-strip { grid-template-columns: repeat(2, 1fr); margin-top: 0; }
+}
