@@ -6,13 +6,17 @@
 // Browser usage (see rebrickableFetch() in core.js):
 //   /api/rebrickable?path=lego/sets/10305-1/
 //   /api/rebrickable?path=lego/sets/&search=castle&page_size=20
+//
+// Requires a signed-in Supabase session (X-Auth-Token header, see _auth.js).
+
+import { requireUser } from './_auth.js';
 
 // Only the catalog endpoints the site uses — nothing account-related
 const ALLOWED_PATH = /^lego\/(sets|themes|parts|part_categories|minifigs|colors)(\/[A-Za-z0-9._-]+)*\/?$/;
 
 // Requests must come from the site itself. This stops other websites from
-// using the proxy through visitors' browsers; it's a deterrent, not a lock,
-// since a script can fake these headers.
+// using the proxy through visitors' browsers. The sign-in check below is
+// the real lock, since a script can fake these headers.
 const ALLOWED_ORIGINS = ['https://www.90sgeek.org', 'https://90sgeek.org'];
 
 function fromOwnSite(req) {
@@ -32,6 +36,8 @@ export default async function handler(req, res) {
   if (!fromOwnSite(req)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
+
+  if (!(await requireUser(req, res))) return;
 
   const { path, ...params } = req.query;
   if (typeof path !== 'string' || path.includes('..') || !ALLOWED_PATH.test(path)) {

@@ -4,10 +4,13 @@
 // launch/retirement dates for one set.
 //
 // Browser usage: /api/brickset?setNumber=10305-1
+// Requires a signed-in Supabase session (X-Auth-Token header, see _auth.js).
+
+import { requireUser } from './_auth.js';
 
 // Requests must come from the site itself, so other websites can't use this
 // function (and your Brickset quota) through their visitors' browsers.
-// A deterrent, not a lock — a script can fake these headers.
+// The sign-in check below is the real lock — a script can fake these headers.
 const ALLOWED_ORIGINS = ['https://www.90sgeek.org', 'https://90sgeek.org'];
 
 function fromOwnSite(req) {
@@ -30,6 +33,8 @@ export default async function handler(req, res) {
   if (!fromOwnSite(req)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
+
+  if (!(await requireUser(req, res))) return;
 
   const { setNumber } = req.query;
   if (typeof setNumber !== 'string' || !SET_NUMBER.test(setNumber)) {
