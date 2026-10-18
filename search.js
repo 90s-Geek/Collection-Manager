@@ -563,12 +563,14 @@ function isSotdExcluded(themeName) {
     return SOTD_EXCLUDE_THEMES.some(ex => lower.includes(ex));
 }
 
-// --- SPIN AGAIN ---
-// 0 = today's real pick. Each spin bumps this and re-runs the same
-// date-seeded math with a different offset, so today's pick stays the
-// same for everyone/every reload and spins are just extras for this visit.
-let sotdSpin = 0;
-let sotdSpinning = false;
+// --- SPIN AGAIN (Set of the Day + Part of the Day) ---
+// spin 0 = today's real pick. Each spin bumps the number and re-runs the
+// same date-seeded math with a different offset, so today's pick stays the
+// same on every reload and spins are just extras for this visit.
+const dailySpin = {
+    sotd: { spin: 0, busy: false, section: 'sotd-section', load: s => loadSetOfTheDay(s) },
+    potd: { spin: 0, busy: false, section: 'potd-section', load: s => loadPartOfTheDay(s) },
+};
 
 async function loadSetOfTheDay(spin = 0) {
     const container = document.getElementById('sotd-container');
@@ -625,50 +627,56 @@ async function loadSetOfTheDay(spin = 0) {
     return false;
 }
 
-async function spinSetOfTheDay(dir = 1) {
-    if (sotdSpinning) return;
-    const prev = sotdSpin;
-    sotdSpin = dir === 0 ? 0 : sotdSpin + 1; // set first so the card's badge is right
-    sotdSpinning = true;
-    const section = document.getElementById('sotd-section');
+// kind: 'sotd' | 'potd'. dir 1 = spin again, 0 = back to today's pick.
+async function spinDaily(kind, dir = 1) {
+    const st = dailySpin[kind];
+    if (!st || st.busy) return;
+    const prev = st.spin;
+    st.spin = dir === 0 ? 0 : st.spin + 1; // set first so the card's badge is right
+    st.busy = true;
+    const section = document.getElementById(st.section);
     section?.classList.add('is-spinning');
-    updateSpinControls();
+    updateSpinControls(kind);
 
-    const ok = await loadSetOfTheDay(sotdSpin);
+    const ok = await st.load(st.spin);
     if (!ok) {
-        sotdSpin = prev; // the previous set is still on screen
+        st.spin = prev; // the previous pick is still on screen
         showToast('Could not spin — try again in a moment.', 'error');
     }
 
-    sotdSpinning = false;
+    st.busy = false;
     section?.classList.remove('is-spinning');
-    updateSpinControls();
+    updateSpinControls(kind);
 }
 
-// Adds the SPIN AGAIN / TODAY'S PICK buttons to the Set of the Day header
-function initSotdSpin() {
-    const header = document.querySelector('#sotd-section .sotd-header');
+// Adds the SPIN AGAIN / TODAY'S PICK buttons to a daily card's header
+function initSpinControls(kind) {
+    const st = dailySpin[kind];
+    const header = st && document.querySelector(`#${st.section} .sotd-header`);
     if (!header || header.querySelector('.sotd-spin')) return;
     const wrap = document.createElement('div');
     wrap.className = 'sotd-spin';
     wrap.innerHTML = `
-        <button type="button" class="sotd-spin-btn sotd-spin-btn--today" onclick="spinSetOfTheDay(0)" title="Go back to today's pick" hidden>↺ TODAY'S PICK</button>
-        <button type="button" class="sotd-spin-btn" id="sotd-spin-btn" onclick="spinSetOfTheDay(1)" title="Show a different random set">⟳ SPIN AGAIN</button>
+        <button type="button" class="sotd-spin-btn sotd-spin-btn--today" onclick="spinDaily('${kind}', 0)" title="Go back to today's pick" hidden>↺ TODAY'S PICK</button>
+        <button type="button" class="sotd-spin-btn sotd-spin-btn--again" onclick="spinDaily('${kind}', 1)" title="Show a different random pick">⟳ SPIN AGAIN</button>
     `;
     header.appendChild(wrap);
-    updateSpinControls();
+    updateSpinControls(kind);
 }
 
-function updateSpinControls() {
-    const spinBtn  = document.getElementById('sotd-spin-btn');
-    const todayBtn = document.querySelector('.sotd-spin-btn--today');
+function updateSpinControls(kind) {
+    const st = dailySpin[kind];
+    const header = st && document.querySelector(`#${st.section} .sotd-header`);
+    if (!header) return;
+    const spinBtn  = header.querySelector('.sotd-spin-btn--again');
+    const todayBtn = header.querySelector('.sotd-spin-btn--today');
     if (spinBtn) {
-        spinBtn.disabled = sotdSpinning;
-        spinBtn.textContent = sotdSpinning ? '⟳ SPINNING…' : '⟳ SPIN AGAIN';
+        spinBtn.disabled = st.busy;
+        spinBtn.textContent = st.busy ? '⟳ SPINNING…' : '⟳ SPIN AGAIN';
     }
     if (todayBtn) {
-        todayBtn.hidden = sotdSpin === 0;
-        todayBtn.disabled = sotdSpinning;
+        todayBtn.hidden = st.spin === 0;
+        todayBtn.disabled = st.busy;
     }
 }
 
@@ -678,7 +686,8 @@ function renderSetOfTheDay(set) {
 
     const inCollection = collectionSetNums.has(set.set_num);
     const inWantlist   = wantlistSetNums.has(set.set_num);
-    const badge = sotdSpin > 0 ? `⟳ SPIN #${sotdSpin}` : '⚄ DAILY PICK';
+    const spinNo = dailySpin.sotd.spin;
+    const badge = spinNo > 0 ? `⟳ SPIN #${spinNo}` : '⚄ DAILY PICK';
 
     container.innerHTML = `
         <div class="sotd-body">
@@ -739,10 +748,10 @@ function isPotdExcluded(categoryName) {
     return POTD_EXCLUDE_CATEGORIES.some(ex => lower.includes(ex));
 }
 
-async function loadPartOfTheDay() {
+async function loadPartOfTheDay(spin = 0) {
     const container = document.getElementById('potd-container');
     const dateLabel = document.getElementById('potd-date');
-    if (!container) return;
+    if (!container) return false;
 
     const now = new Date();
     if (dateLabel) {
@@ -758,13 +767,14 @@ async function loadPartOfTheDay() {
     // two picks don't feel synced to the same day-of-year math.
     // If a page happens to be dominated by excluded categories or missing
     // images, retry on a few nearby pages before giving up.
+    // A spin shifts both the page and the candidate, like Set of the Day.
     const totalPages = 300;
-    const candidateIdx = (dayOfYear + 5) % 15;
+    const candidateIdx = (dayOfYear + 5 + spin * 4) % 15;
     const pageOffsets = [0, 75, 150];
 
     let lastErr = null;
     for (const offset of pageOffsets) {
-        const page = ((dayOfYear + offset) % totalPages) + 1;
+        const page = ((dayOfYear + offset + spin * 41) % totalPages) + 1;
         try {
             const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/parts/?page=${page}&page_size=15&ordering=part_num`);
             if (!res.ok) throw new Error(`API error ${res.status}`);
@@ -781,14 +791,16 @@ async function loadPartOfTheDay() {
 
             const part = valid[candidateIdx % valid.length];
             renderPartOfTheDay({ ...part, category_name: partCategoryCache[part.part_cat_id] || 'Unknown' });
-            return;
+            return true;
         } catch (err) {
             lastErr = err;
         }
     }
 
     console.error('Part of the Day failed:', lastErr);
-    if (container) container.innerHTML = `<span class="sotd-error">Could not load part of the day.</span>`;
+    // A failed spin keeps the part already on screen; only the first load shows an error
+    if (spin === 0 && container) container.innerHTML = `<span class="sotd-error">Could not load part of the day.</span>`;
+    return false;
 }
 
 function renderPartOfTheDay(part) {
@@ -799,7 +811,7 @@ function renderPartOfTheDay(part) {
         <div class="sotd-body">
             <div class="sotd-img-panel" onclick="window.open('${part.part_url}', '_blank')" title="Click to view on Rebrickable">
                 <img id="potd-img" src="${part.part_img_url || ''}" alt="${escapeHTML(part.name)}">
-                <span class="sotd-badge">⚉ DAILY PICK</span>
+                <span class="sotd-badge">${dailySpin.potd.spin > 0 ? `⟳ SPIN #${dailySpin.potd.spin}` : '⚉ DAILY PICK'}</span>
                 <span class="sotd-enlarge-hint">🔍 click to view</span>
             </div>
             <div class="sotd-info-panel">
@@ -925,7 +937,8 @@ function initSearchPage() {
     initSearchClear();
     placeResultsBelowSearch();
     padRecentlyAddedSkeleton();
-    initSotdSpin();
+    initSpinControls('sotd');
+    initSpinControls('potd');
 }
 
 if (document.readyState === 'loading') {

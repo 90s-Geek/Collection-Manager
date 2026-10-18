@@ -1974,7 +1974,7 @@ body #result-container::before {
     background: rgba(255,183,48,0.08);
 }
 
-/* --- Set of the Day: SPIN AGAIN / TODAY'S PICK --- */
+/* --- Set / Part of the Day: SPIN AGAIN / TODAY'S PICK --- */
 .sotd-spin { display: flex; gap: 6px; flex-shrink: 0; }
 .sotd-spin-btn {
     background: transparent;
@@ -1999,7 +1999,8 @@ body #result-container::before {
 .sotd-spin-btn--today:hover { color: var(--amber); }
 .sotd-spin-btn:disabled { opacity: 0.55; cursor: wait; }
 .sotd-spin-btn[hidden] { display: none; }
-#sotd-section.is-spinning #sotd-container { opacity: 0.45; transition: opacity 0.2s ease; pointer-events: none; }
+#sotd-section.is-spinning #sotd-container,
+#potd-section.is-spinning #potd-container { opacity: 0.45; transition: opacity 0.2s ease; pointer-events: none; }
 @media (max-width: 600px) {
     .sotd-header { flex-wrap: wrap; gap: 8px; }
 }
