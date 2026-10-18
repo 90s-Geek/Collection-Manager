@@ -572,6 +572,54 @@ const dailySpin = {
     potd: { spin: 0, busy: false, section: 'potd-section', load: s => loadPartOfTheDay(s) },
 };
 
+// --- Picking from the WHOLE catalog ---
+// The old picker only ever reached the first 200 pages (≈2,000 sets) in
+// set-number order, so picks skewed toward old 90s numbers. Now we ask
+// Rebrickable how many qualifying sets exist, then jump to a random page
+// anywhere in that range.
+const SOTD_FILTER    = 'min_parts=50';
+const SOTD_PAGE_SIZE = 10;
+const SOTD_COUNT_KEY = '90sgeek_sotd_count_v1';
+const SOTD_COUNT_TTL = 7 * 24 * 60 * 60 * 1000; // re-check the catalog size weekly
+const SOTD_FALLBACK_PAGES = 200;                  // used only if the count lookup fails
+
+async function getSotdPageCount() {
+    try {
+        const { savedAt, count } = JSON.parse(localStorage.getItem(SOTD_COUNT_KEY) || '{}');
+        if (count > 0 && Date.now() - savedAt < SOTD_COUNT_TTL) return Math.ceil(count / SOTD_PAGE_SIZE);
+    } catch {}
+    try {
+        const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/?page_size=1&${SOTD_FILTER}`);
+        if (!res.ok) throw new Error();
+        const count = (await res.json()).count;
+        if (!(count > 0)) throw new Error();
+        try { localStorage.setItem(SOTD_COUNT_KEY, JSON.stringify({ savedAt: Date.now(), count })); } catch {}
+        return Math.ceil(count / SOTD_PAGE_SIZE);
+    } catch {
+        return SOTD_FALLBACK_PAGES;
+    }
+}
+
+// Repeatable "random" numbers from a text seed: the same seed always gives
+// the same sequence, so a date + spin number always lands on the same set.
+// (FNV-1a hash of the seed feeding a mulberry32 generator.)
+function seededRandom(seed) {
+    let h = 2166136261;
+    for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+    let a = h >>> 0;
+    return () => {
+        a = (a + 0x6D2B79F5) >>> 0;
+        let t = a;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+function localDateKey(d = new Date()) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 async function loadSetOfTheDay(spin = 0) {
     const container = document.getElementById('sotd-container');
     const dateLabel = document.getElementById('sotd-date');
@@ -582,25 +630,18 @@ async function loadSetOfTheDay(spin = 0) {
         dateLabel.textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
     }
 
-    const startOfYear = new Date(now.getFullYear(), 0, 0);
-    const dayOfYear = Math.floor((now - startOfYear) / 86400000);
-
-    // Fetch a page of 10 candidates so we can filter out bulk/parts packs
-    // and still land on a real set. Use day-of-year to pick the page,
-    // then use day % 10 to pick which candidate within the page.
-    // If a page happens to be dominated by excluded themes, retry on a
-    // few nearby pages before giving up.
-    // A spin shifts both the page and the candidate (prime steps so
-    // consecutive spins land far apart and don't repeat quickly).
-    const totalPages = 200;
-    const candidateIdx = (dayOfYear + spin * 3) % 10;
-    const pageOffsets = [0, 50, 100];
+    // Seeded by the full date (not day-of-year, so each year differs too)
+    // plus the spin number. Each attempt draws a fresh random page and
+    // candidate; a page full of bulk/parts packs just moves on to another.
+    const totalPages = await getSotdPageCount();
+    const rand = seededRandom(`${localDateKey(now)}|sotd|${spin}`);
 
     let lastErr = null;
-    for (const offset of pageOffsets) {
-        const page = ((dayOfYear + offset + spin * 37) % totalPages) + 1;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const page = 1 + Math.floor(rand() * totalPages);
+        const pick = Math.floor(rand() * SOTD_PAGE_SIZE);
         try {
-            const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/?page=${page}&page_size=10&min_parts=50&ordering=set_num`);
+            const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/?page=${page}&page_size=${SOTD_PAGE_SIZE}&${SOTD_FILTER}&ordering=set_num`);
             if (!res.ok) throw new Error(`API error ${res.status}`);
             const data = await res.json();
             const candidates = data.results || [];
@@ -613,7 +654,7 @@ async function loadSetOfTheDay(spin = 0) {
             const valid = candidates.filter(s => !isSotdExcluded(themeCache[s.theme_id]));
             if (!valid.length) throw new Error('No valid sets after filtering');
 
-            const set = valid[candidateIdx % valid.length];
+            const set = valid[pick % valid.length];
             renderSetOfTheDay({ ...set, theme_name: themeCache[set.theme_id] || 'Unknown' });
             return true;
         } catch (err) {
