@@ -59,6 +59,8 @@ body[data-page="wantlist"] {
 /* Want list — amber surface tint (distinct from a simple accent-color swap) */
 body[data-page="wantlist"] .controls-panel { border-color: #4a3200; background: #252010; }
 body[data-page="wantlist"] .controls-panel-title { color: #886600; }
+/* Open header matches the Collection page: magenta text and arrow */
+body[data-page="wantlist"] .controls-panel-title.open { color: var(--magenta); }
 body[data-page="wantlist"] .control-row label { color: var(--accent); }
 body[data-page="wantlist"] .control-row select,
 body[data-page="wantlist"] .control-row input[type="text"] { color: var(--accent); border-color: var(--accent); }
