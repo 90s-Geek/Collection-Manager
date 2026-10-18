@@ -2076,3 +2076,37 @@ a.stats-tile:focus-visible { outline: 2px solid var(--tile-color); outline-offse
 @media (max-width: 600px) {
     .stats-strip { grid-template-columns: repeat(2, 1fr); margin-top: 0; }
 }
+
+/* --- Search results: loading skeletons (built by search.js) --- */
+.sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+.search-skel .search-skel-row { cursor: default; }
+.search-skel .search-skel-row:hover { background: transparent; }
+.search-skel-thumb { width: 50px; height: 40px; flex-shrink: 0; border-radius: 4px; }
+.search-skel-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.search-skel-lines .skeleton-text.long   { width: 60%; height: 11px; }
+.search-skel-lines .skeleton-text.medium { width: 35%; height: 8px; }
+.search-skel-btn { width: 32px; height: 32px; border-radius: var(--radius-sm); }
+.search-skel-header { width: 220px; height: 10px; }
+
+.search-skel-detail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding-top: 4px;
+}
+.search-skel-title  { width: 55%; height: 18px; }
+.search-skel-meta   { width: 75%; height: 10px; }
+.search-skel-price  { width: 100%; max-width: 520px; height: 46px; }
+.search-skel-img    { width: 250px; max-width: 100%; height: 180px; }
+.search-skel-select { width: 100%; height: 34px; }
+.search-skel-actions { display: flex; gap: 10px; width: 100%; }
+.search-skel-actions .skeleton { flex: 1; height: 40px; }

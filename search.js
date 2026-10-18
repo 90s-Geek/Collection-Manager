@@ -113,9 +113,10 @@ async function searchLego() {
 
     const container = document.getElementById('result-container');
     container.style.display = 'block';
-    container.innerHTML = '<p>Accessing Rebrickable...</p>';
 
     const isSetNum = /^\d+(-\d+)?$/.test(input);
+    // A set number goes straight to that set's details; a name/theme shows a list
+    container.innerHTML = isSetNum ? setDetailSkeletonHTML() : searchListSkeletonHTML();
     try {
         if (isSetNum) {
             await searchBySetNum(input, container);
@@ -261,6 +262,46 @@ async function searchByThemeId(themeId, themeName, container) {
     renderNameSearchResults(searchAllResults, themeCache, `Theme: ${themeName}`, data.count);
 }
 
+// --- Loading skeletons for the results panel ---
+// Shaped like what's about to appear (a result list, or one set's details)
+// so the panel doesn't jump when the real content arrives.
+const SR_LOADING = '<span class="sr-only" role="status">Loading…</span>';
+
+function searchListSkeletonHTML(rows = 5) {
+    const row = `
+        <li class="search-result-item search-skel-row" aria-hidden="true">
+            <div class="skeleton search-skel-thumb"></div>
+            <div class="search-skel-lines">
+                <div class="skeleton skeleton-text long"></div>
+                <div class="skeleton skeleton-text medium"></div>
+            </div>
+            <div class="quick-add">
+                <div class="skeleton search-skel-btn"></div>
+                <div class="skeleton search-skel-btn"></div>
+            </div>
+        </li>`;
+    return `
+        ${SR_LOADING}
+        <div class="search-results-header" aria-hidden="true"><div class="skeleton skeleton-text search-skel-header"></div></div>
+        <ul class="search-results-list search-skel">${row.repeat(rows)}</ul>`;
+}
+
+function setDetailSkeletonHTML() {
+    return `
+        ${SR_LOADING}
+        <div class="search-skel search-skel-detail" aria-hidden="true">
+            <div class="skeleton search-skel-title"></div>
+            <div class="skeleton skeleton-text search-skel-meta"></div>
+            <div class="skeleton search-skel-price"></div>
+            <div class="skeleton search-skel-img"></div>
+            <div class="skeleton search-skel-select"></div>
+            <div class="search-skel-actions">
+                <div class="skeleton"></div>
+                <div class="skeleton"></div>
+            </div>
+        </div>`;
+}
+
 // Re-draw the current result list without losing the user's scroll spot
 // (used after Load More and after a quick-add changes a row's badges).
 function rerenderSearchList() {
@@ -395,7 +436,7 @@ async function quickAdd(kind, setNum, ev) {
 
 async function selectSearchResult(setNum, themeId) {
     const container = document.getElementById('result-container');
-    container.innerHTML = '<p>Loading set details...</p>';
+    container.innerHTML = setDetailSkeletonHTML();
     try {
         const setRes = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`);
         if (!setRes.ok) throw new Error("Set not found.");
@@ -956,7 +997,7 @@ function renderPartOfTheDay(part) {
 async function selectSotdSet(setNum, themeId) {
     const container = document.getElementById('result-container');
     container.style.display = 'block';
-    container.innerHTML = '<p>Loading set details...</p>';
+    container.innerHTML = setDetailSkeletonHTML();
     container.scrollIntoView({ behavior: 'smooth', block: 'start' });
     try {
         const setRes = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/${setNum}/`);
