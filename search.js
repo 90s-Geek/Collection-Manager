@@ -653,21 +653,27 @@ const SOTD_COUNT_KEY = '90sgeek_sotd_count_v1';
 const SOTD_COUNT_TTL = 7 * 24 * 60 * 60 * 1000; // re-check the catalog size weekly
 const SOTD_FALLBACK_PAGES = 200;                  // used only if the count lookup fails
 
-async function getSotdPageCount() {
+// How many pages a Rebrickable catalog listing has, cached for a week.
+// path: 'lego/sets/' or 'lego/parts/'; filter: extra query (may be '').
+async function getCatalogPageCount(storageKey, path, filter, pageSize, fallbackPages) {
     try {
-        const { savedAt, count } = JSON.parse(localStorage.getItem(SOTD_COUNT_KEY) || '{}');
-        if (count > 0 && Date.now() - savedAt < SOTD_COUNT_TTL) return Math.ceil(count / SOTD_PAGE_SIZE);
+        const { savedAt, count } = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        if (count > 0 && Date.now() - savedAt < SOTD_COUNT_TTL) return Math.ceil(count / pageSize);
     } catch {}
     try {
-        const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/sets/?page_size=1&${SOTD_FILTER}`);
+        const res = await rebrickableFetch(`https://rebrickable.com/api/v3/${path}?page_size=1${filter ? '&' + filter : ''}`);
         if (!res.ok) throw new Error();
         const count = (await res.json()).count;
         if (!(count > 0)) throw new Error();
-        try { localStorage.setItem(SOTD_COUNT_KEY, JSON.stringify({ savedAt: Date.now(), count })); } catch {}
-        return Math.ceil(count / SOTD_PAGE_SIZE);
+        try { localStorage.setItem(storageKey, JSON.stringify({ savedAt: Date.now(), count })); } catch {}
+        return Math.ceil(count / pageSize);
     } catch {
-        return SOTD_FALLBACK_PAGES;
+        return fallbackPages;
     }
+}
+
+function getSotdPageCount() {
+    return getCatalogPageCount(SOTD_COUNT_KEY, 'lego/sets/', SOTD_FILTER, SOTD_PAGE_SIZE, SOTD_FALLBACK_PAGES);
 }
 
 // Repeatable "random" numbers from a text seed: the same seed always gives
@@ -859,6 +865,13 @@ function isPotdExcluded(categoryName) {
     return POTD_EXCLUDE_CATEGORIES.some(ex => lower.includes(ex));
 }
 
+// Same whole-catalog approach as Set of the Day (the old picker only
+// reached the first 300 pages of parts, in part-number order).
+const POTD_PAGE_SIZE      = 15;
+const POTD_COUNT_KEY      = '90sgeek_potd_count_v1';
+const POTD_FALLBACK_PAGES = 300;
+const POTD_ATTEMPTS       = 5; // parts deep in the catalog are more often imageless/stickers
+
 async function loadPartOfTheDay(spin = 0) {
     const container = document.getElementById('potd-container');
     const dateLabel = document.getElementById('potd-date');
@@ -869,29 +882,23 @@ async function loadPartOfTheDay(spin = 0) {
         dateLabel.textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
     }
 
-    const startOfYear = new Date(now.getFullYear(), 0, 0);
-    const dayOfYear = Math.floor((now - startOfYear) / 86400000);
-
     // Fetch a page of 15 candidates so we can filter out parts with no
-    // image and non-brick categories (stickers, gear, etc.) and still
-    // land on a real part. Offset the candidate index from SOTD's so the
-    // two picks don't feel synced to the same day-of-year math.
-    // If a page happens to be dominated by excluded categories or missing
-    // images, retry on a few nearby pages before giving up.
-    // A spin shifts both the page and the candidate, like Set of the Day.
-    const totalPages = 300;
-    const candidateIdx = (dayOfYear + 5 + spin * 4) % 15;
-    const pageOffsets = [0, 75, 150];
+    // image and non-brick categories (stickers, gear, etc.) and still land
+    // on a real part. Seeded by date + spin ('potd' keeps it independent of
+    // Set of the Day); each attempt draws a fresh random page and candidate.
+    const totalPages = await getCatalogPageCount(POTD_COUNT_KEY, 'lego/parts/', '', POTD_PAGE_SIZE, POTD_FALLBACK_PAGES);
+    const rand = seededRandom(`${localDateKey(now)}|potd|${spin}`);
 
     let lastErr = null;
-    for (const offset of pageOffsets) {
-        const page = ((dayOfYear + offset + spin * 41) % totalPages) + 1;
+    for (let attempt = 0; attempt < POTD_ATTEMPTS; attempt++) {
+        const page = 1 + Math.floor(rand() * totalPages);
+        const pick = Math.floor(rand() * POTD_PAGE_SIZE);
         try {
-            const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/parts/?page=${page}&page_size=15&ordering=part_num`);
+            const res = await rebrickableFetch(`https://rebrickable.com/api/v3/lego/parts/?page=${page}&page_size=${POTD_PAGE_SIZE}&ordering=part_num`);
             if (!res.ok) throw new Error(`API error ${res.status}`);
             const data = await res.json();
             const candidates = (data.results || []).filter(p => p.part_img_url);
-            if (!candidates.length) throw new Error('No parts returned');
+            if (!candidates.length) throw new Error('No parts with images on this page');
 
             // Resolve all category names in parallel
             await Promise.all([...new Set(candidates.map(p => p.part_cat_id))].map(id => fetchPartCategory(id)));
@@ -900,7 +907,7 @@ async function loadPartOfTheDay(spin = 0) {
             const valid = candidates.filter(p => !isPotdExcluded(partCategoryCache[p.part_cat_id]));
             if (!valid.length) throw new Error('No valid parts after filtering');
 
-            const part = valid[candidateIdx % valid.length];
+            const part = valid[pick % valid.length];
             renderPartOfTheDay({ ...part, category_name: partCategoryCache[part.part_cat_id] || 'Unknown' });
             return true;
         } catch (err) {
