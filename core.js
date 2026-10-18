@@ -49,22 +49,53 @@ function rebrickableProxyUrl(pathOrUrl) {
 }
 
 function rebrickableFetch(pathOrUrl, init = {}) {
-    const { headers, ...rest } = init; // never send auth headers from the browser
+    const { headers, ...rest } = init; // never send caller-supplied headers to the proxy
     return fetch(rebrickableProxyUrl(pathOrUrl), rest);
 }
 
-// Safety net: if any other page script (collection, wish list, stats,
-// CSV import) still calls Rebrickable directly, quietly reroute it
-// through the proxy instead of letting it fail without a key.
+// --- Signed-in calls to our own API proxies ---
+// /api/rebrickable and /api/brickset only answer requests that carry a
+// valid Supabase session token (checked server-side in api/_auth.js).
+// The token goes in X-Auth-Token rather than Authorization so Vercel's CDN
+// can still cache catalog responses and keep us under the rate limits.
+const PROTECTED_API_PATHS = ['/api/rebrickable', '/api/brickset'];
+
+async function withAuthToken(headers) {
+    const h = new Headers(headers || {});
+    try {
+        const { data } = await db.auth.getSession(); // refreshes the token if it's expired
+        const token = data?.session?.access_token;
+        if (token) h.set('X-Auth-Token', token);
+    } catch {}
+    return h;
+}
+
+// Wraps fetch for every page script that loads after this one:
+//  1. Any direct call to Rebrickable is rerouted through the proxy (no key
+//     needed in the browser).
+//  2. Calls to the protected proxies get the session token attached.
 (() => {
     const nativeFetch = window.fetch.bind(window);
-    window.fetch = (input, init) => {
-        const url = typeof input === 'string' ? input : (input && input.url);
+    window.fetch = async (input, init) => {
+        let url  = typeof input === 'string' ? input : (input && input.url);
+        let opts = init || {};
+
         if (url && url.startsWith(REBRICKABLE_API_BASE)) {
-            const { headers, ...rest } = init || {};
-            return nativeFetch(rebrickableProxyUrl(url), rest);
+            const { headers, ...rest } = opts;
+            url   = rebrickableProxyUrl(url);
+            input = url;
+            opts  = rest;
         }
-        return nativeFetch(input, init);
+
+        let path = '';
+        try { if (url) path = new URL(url, location.href).pathname; } catch {}
+        if (PROTECTED_API_PATHS.includes(path)) {
+            opts = { ...opts, headers: await withAuthToken(opts.headers) };
+            const res = await nativeFetch(input, opts);
+            if (res.status === 401) console.warn(`${path}: sign-in rejected — try logging out and back in`);
+            return res;
+        }
+        return nativeFetch(input, opts);
     };
 })();
 
