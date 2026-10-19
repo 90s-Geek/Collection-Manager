@@ -703,7 +703,6 @@ button:active { transform: translateY(0); }
 .modal-box {
     background: var(--surface);
     border: 1px solid var(--border2);
-    border-top: 2px solid var(--accent);
     border-radius: var(--radius-lg);
     padding: 28px;
     max-width: 440px;
@@ -717,6 +716,23 @@ button:active { transform: translateY(0); }
     overflow-x: hidden;
     overflow-y: auto;
     animation: modalIn 0.18s ease both;
+}
+/* Top edge — 2px accent line that fades out at both ends and pulses,
+   matching the lightbox and Set of the Day (cyan on Collection, amber on Wish List) */
+.modal-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg,
+        transparent,
+        var(--accent) 25%,
+        color-mix(in srgb, var(--accent) 55%, #fff) 50%,
+        var(--accent) 75%,
+        transparent);
+    animation: resultScan 3s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 4;
 }
 .modal-box h2 { color: var(--accent); }
 
