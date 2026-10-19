@@ -1,0 +1,14 @@
+{
+  "name": "90s Geek LEGO Collection",
+  "short_name": "90s Geek",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050805",
+  "theme_color": "#050805",
+  "icons": [
+    { "src": "/images/icon-192.png",          "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/images/icon-512.png",          "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/images/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
