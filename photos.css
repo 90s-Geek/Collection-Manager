@@ -1,0 +1,170 @@
+/* ============================================================
+   photos.css — MY PHOTOS gallery (collection page, built by photos.js)
+   ============================================================ */
+
+/* --- Section inside the edit modal --- */
+.modal-meta > .photo-section {
+    margin-top: 12px;
+    padding: 12px 0 4px;
+    border-top: 1px solid var(--border2);
+    border-bottom: none;
+    line-height: 1.4;
+    border-radius: var(--radius-sm);
+    transition: background var(--transition), box-shadow var(--transition);
+}
+.photo-section.is-dragover {
+    background: var(--accent-glow);
+    box-shadow: 0 0 0 1px var(--accent-dim) inset;
+}
+
+.photo-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.photo-section-title {
+    font-family: var(--mono);
+    font-size: 0.68em;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+.photo-section-count {
+    font-family: var(--mono);
+    font-size: 0.65em;
+    color: var(--accent);
+    letter-spacing: 1px;
+}
+
+/* --- Thumbnail grid --- */
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.photo-grid-msg {
+    grid-column: 1 / -1;
+    font-family: var(--mono);
+    font-size: 0.72em;
+    color: var(--text-muted);
+    padding: 10px 2px;
+}
+.photo-grid-msg--error { color: var(--red); }
+
+.photo-tile {
+    position: relative;
+    aspect-ratio: 1;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--surface2);
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+.photo-tile:hover {
+    border-color: var(--accent-dim);
+    box-shadow: 0 0 12px var(--accent-glow);
+}
+/* Outranks the general ".modal-box img" rule (max-height 190px, white background) */
+.modal-box .photo-tile img {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    object-fit: cover;
+    display: block;
+    background: var(--surface2);
+    cursor: zoom-in;
+}
+
+.photo-del {
+    position: absolute;
+    top: 4px; right: 4px;
+    width: 22px; height: 22px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.65);
+    color: var(--text-dim);
+    border: 1px solid var(--border2);
+    border-radius: 50%;
+    font-size: 0.7em;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0;
+    opacity: 0;
+    transition: opacity var(--transition), color var(--transition), border-color var(--transition), background var(--transition);
+}
+.photo-tile:hover .photo-del,
+.photo-del:focus-visible { opacity: 1; }
+.photo-del:hover {
+    color: var(--red);
+    border-color: var(--red);
+    background: rgba(40,0,10,0.85);
+    box-shadow: none;
+    transform: none;
+}
+/* Touch screens have no hover — keep the delete button visible */
+@media (hover: none) {
+    .photo-del { opacity: 0.85; }
+}
+
+/* --- Add button, hint, status --- */
+.photo-add-btn {
+    display: block;
+    width: 100%;
+    background: transparent;
+    color: var(--accent);
+    border: 1px dashed var(--accent-dim);
+    padding: 8px;
+    font-family: var(--mono);
+    font-size: 0.75em;
+    font-weight: 700;
+    letter-spacing: 1px;
+    border-radius: var(--radius-sm);
+    transition: background var(--transition), box-shadow var(--transition);
+}
+.photo-add-btn:hover {
+    background: var(--accent-glow);
+    box-shadow: 0 0 12px var(--accent-glow);
+    transform: none;
+}
+.photo-add-btn:disabled { opacity: 0.5; cursor: wait; }
+.photo-add-btn[hidden] { display: none; }
+
+.photo-drop-hint {
+    font-family: var(--mono);
+    font-size: 0.6em;
+    color: var(--text-muted);
+    text-align: center;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+@media (hover: none) {
+    .photo-drop-hint { display: none; }
+}
+
+.photo-status {
+    font-family: var(--mono);
+    font-size: 0.68em;
+    color: var(--accent);
+    margin-top: 6px;
+    min-height: 1em;
+    word-break: break-word;
+}
+.photo-status:empty { display: none; }
+.photo-status--error { color: var(--red); }
+
+/* --- 📷 count badge on collection cards --- */
+.photo-count-badge {
+    font-family: var(--mono);
+    font-size: 0.62em;
+    color: var(--cyan);
+    margin-left: 4px;
+    border: 1px solid rgba(0,229,255,0.35);
+    padding: 1px 5px;
+    border-radius: 3px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
