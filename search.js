@@ -737,6 +737,23 @@ function localDateKey(d = new Date()) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// --- Server-side daily pick (api/daily.js) ---
+// The server makes the same date-seeded pick and Vercel's CDN caches the
+// answer, so a page load is one request instead of a burst of 10–20
+// Rebrickable calls. Returns null if the route is missing or fails, and the
+// caller falls back to picking in the browser like before.
+async function fetchDailyPick(kind, spin) {
+    try {
+        const qs = new URLSearchParams({ kind, date: localDateKey(), spin: String(spin) });
+        const res = await fetch(`/api/daily?${qs}`, { headers: await withAuthToken() });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return (kind === 'sotd' ? data?.set : data?.part) || null;
+    } catch {
+        return null;
+    }
+}
+
 async function loadSetOfTheDay(spin = 0) {
     const container = document.getElementById('sotd-container');
     const dateLabel = document.getElementById('sotd-date');
@@ -747,6 +764,15 @@ async function loadSetOfTheDay(spin = 0) {
         dateLabel.textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
     }
 
+    // Fast path: one cached request to our own server
+    const served = await fetchDailyPick('sotd', spin);
+    if (served) {
+        if (served.theme_id != null && served.theme_name) themeCache[served.theme_id] = served.theme_name;
+        renderSetOfTheDay(served);
+        return true;
+    }
+
+    // Fallback: pick in the browser (same math as the server).
     // Seeded by the full date (not day-of-year, so each year differs too)
     // plus the spin number. Each attempt draws a fresh random page and
     // candidate; a page full of bulk/parts packs just moves on to another.
@@ -923,6 +949,15 @@ async function loadPartOfTheDay(spin = 0) {
         dateLabel.textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
     }
 
+    // Fast path: one cached request to our own server
+    const served = await fetchDailyPick('potd', spin);
+    if (served) {
+        if (served.part_cat_id != null && served.category_name) partCategoryCache[served.part_cat_id] = served.category_name;
+        renderPartOfTheDay(served);
+        return true;
+    }
+
+    // Fallback: pick in the browser (same math as the server).
     // Fetch a page of 15 candidates so we can filter out parts with no
     // image and non-brick categories (stickers, gear, etc.) and still land
     // on a real part. Seeded by date + spin ('potd' keeps it independent of
