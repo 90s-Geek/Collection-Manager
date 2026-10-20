@@ -2202,3 +2202,71 @@ a.stats-tile:focus-visible { outline: 2px solid var(--tile-color); outline-offse
 .ptr-indicator.is-refreshing { color: var(--accent); border-color: var(--accent-dim); }
 .ptr-indicator.is-refreshing .ptr-icon { animation: ptrSpin 0.7s linear infinite; }
 @keyframes ptrSpin { to { transform: rotate(360deg); } }
+
+/* --- Set / Part of the Day: SIGNAL LOST card (built by search.js) --- */
+/* Two classes so this outranks the single-class .sotd-img-panel rule in index.html */
+.sotd-img-panel.sotd-signal-screen {
+    cursor: default;
+    min-height: 180px;
+    background:
+        repeating-linear-gradient(0deg, rgba(57,232,128,0.06) 0 1px, transparent 1px 3px),
+        radial-gradient(ellipse at 50% 50%, #142014 0%, #070b07 75%);
+}
+.sotd-img-panel.sotd-signal-screen:hover { filter: none; }
+/* Slow rolling bar, like an old CRT losing sync */
+.sotd-signal-screen::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 40%;
+    background: linear-gradient(180deg, transparent, rgba(57,232,128,0.08), transparent);
+    animation: signalRoll 3.5s linear infinite;
+    pointer-events: none;
+}
+.sotd-signal-screen span {
+    position: relative;
+    font-family: var(--mono);
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    background: rgba(5,8,5,0.75);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 4px 10px;
+    animation: signalFlicker 2.8s steps(1) infinite;
+}
+.sotd-signal-title {
+    font-family: var(--mono);
+    color: var(--red);
+    font-size: 1em;
+    font-weight: 700;
+    letter-spacing: 3px;
+}
+.sotd-signal-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 1em;
+    margin-left: 6px;
+    background: var(--red);
+    vertical-align: text-bottom;
+    animation: signalBlink 1s step-end infinite;
+}
+.sotd-signal-msg {
+    font-family: var(--mono);
+    color: var(--text-dim);
+    font-size: 0.74em;
+    line-height: 1.6;
+    margin-top: 8px;
+}
+.sotd-retry-btn:disabled { opacity: 0.6; cursor: wait; }
+
+@keyframes signalRoll    { from { top: -40%; } to { top: 100%; } }
+@keyframes signalFlicker { 0%, 47% { opacity: 1; } 48% { opacity: 0.35; } 50%, 81% { opacity: 1; } 82% { opacity: 0.6; } 83%, 100% { opacity: 1; } }
+@keyframes signalBlink   { 50% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+    .sotd-signal-screen::before,
+    .sotd-signal-screen span,
+    .sotd-signal-cursor { animation: none; }
+}

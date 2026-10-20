@@ -807,9 +807,59 @@ async function loadSetOfTheDay(spin = 0) {
 
     console.error('Set of the Day failed:', lastErr);
     // A failed spin keeps the set already on screen; only the first load shows an error
-    if (spin === 0 && container) container.innerHTML = `<span class="sotd-error">Could not load set of the day.</span>`;
+    if (spin === 0 && container) container.innerHTML = dailyErrorHTML('sotd');
     return false;
 }
+
+// --- SIGNAL LOST card (Set / Part of the Day failed to load) ---
+// Replaces the old one-line error with a themed card and a RETRY button.
+// Technical details stay in the console (console.error above), not on screen.
+const DAILY_ERROR_TEXT = {
+    sotd: "Couldn't reach the brick archive. Today's set is still in there somewhere.",
+    potd: "Couldn't reach the parts bin. Today's part is still in there somewhere."
+};
+
+function dailyErrorHTML(kind) {
+    const offline = navigator.onLine === false;
+    const msg = offline ? 'No network connection. This will retry as soon as you are back online.'
+                        : DAILY_ERROR_TEXT[kind];
+    return `
+        <div class="sotd-body sotd-body--error" role="alert" data-daily-error="${kind}">
+            <div class="sotd-img-panel sotd-signal-screen" aria-hidden="true">
+                <span>${offline ? 'OFFLINE' : 'NO SIGNAL'}</span>
+            </div>
+            <div class="sotd-info-panel">
+                <div>
+                    <div class="sotd-signal-title">&gt; SIGNAL LOST<span class="sotd-signal-cursor"></span></div>
+                    <div class="sotd-signal-msg">${escapeHTML(msg)}</div>
+                </div>
+                <div class="sotd-actions">
+                    <button type="button" class="sotd-btn primary sotd-retry-btn" onclick="retryDaily('${kind}')">⟳ RETRY</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+async function retryDaily(kind) {
+    const st = dailySpin[kind];
+    if (!st || st.busy) return;
+    const btn = document.querySelector(`#${st.section} .sotd-retry-btn`);
+    if (btn) { btn.disabled = true; btn.textContent = '⟳ RETRYING…'; }
+
+    st.spin = 0;
+    st.busy = true;
+    updateSpinControls(kind);
+    const ok = await st.load(0);   // on failure this redraws the card with a fresh button
+    st.busy = false;
+    updateSpinControls(kind);
+
+    if (!ok) showToast('Still no signal — try again in a minute.', 'warning');
+}
+
+// Coming back online retries any card that is showing SIGNAL LOST
+window.addEventListener('online', () => {
+    document.querySelectorAll('[data-daily-error]').forEach(el => retryDaily(el.dataset.dailyError));
+});
 
 // kind: 'sotd' | 'potd'. dir 1 = spin again, 0 = back to today's pick.
 async function spinDaily(kind, dir = 1) {
@@ -993,7 +1043,7 @@ async function loadPartOfTheDay(spin = 0) {
 
     console.error('Part of the Day failed:', lastErr);
     // A failed spin keeps the part already on screen; only the first load shows an error
-    if (spin === 0 && container) container.innerHTML = `<span class="sotd-error">Could not load part of the day.</span>`;
+    if (spin === 0 && container) container.innerHTML = dailyErrorHTML('potd');
     return false;
 }
 
