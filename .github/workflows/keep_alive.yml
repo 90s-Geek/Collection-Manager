@@ -20,12 +20,15 @@ jobs:
             echo "::error::SUPABASE_URL or SUPABASE_ANON_KEY secret is missing (repo Settings → Secrets and variables → Actions)"
             exit 1
           fi
-          # A real GET (not HEAD) so the database actually runs a query.
-          # Row Level Security means this returns [] — that still counts as activity.
+          # Calls the public.keepalive() database function (supabase-keepalive.sql).
+          # It runs a real query — so Supabase counts the project as active — but
+          # reads none of your tables, which the anon key can no longer access.
           # --fail makes the job go red if Supabase answers with an error.
           curl --fail --show-error --silent \
-            "$SUPABASE_URL/rest/v1/lego_collection?select=id&limit=1" \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/keepalive" \
             -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}'
           echo
           echo "Supabase responded OK at $(date -u)"
