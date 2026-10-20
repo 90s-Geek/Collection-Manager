@@ -1,7 +1,7 @@
 {
   "name": "90s Geek LEGO Collection",
   "short_name": "90s Geek",
-  "start_url": "/",
+  "start_url": "/login.html",
   "scope": "/",
   "display": "standalone",
   "background_color": "#050805",
