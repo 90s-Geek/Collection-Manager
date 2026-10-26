@@ -17,7 +17,6 @@ const MS_LINE_SUGGESTIONS = [
     'Hot Wheels Speed',
     'Hot Wheels Elite',
     'Hot Wheels Premium',
-    'Masters of the Universe',
 ];
 
 const MS_PAGE = document.body.dataset.page; // mattel-home | mattel-collection | mattel-wantlist
@@ -87,7 +86,7 @@ function msAttachThumbFallbacks(root) {
     });
 }
 
-// Distinct lines across both tables (for the datalist + filter)
+// Distinct lines across both tables (for the Line dropdown + filter)
 async function msLoadLines() {
     const lines = new Set(MS_LINE_SUGGESTIONS);
     for (const t of Object.values(MS_TABLES)) {
@@ -97,10 +96,42 @@ async function msLoadLines() {
     return [...lines].sort((a, b) => a.localeCompare(b));
 }
 
+// Current choices for the Line dropdown (suggestions + lines already in your data)
+let msLineOptions = [...MS_LINE_SUGGESTIONS];
+const MS_LINE_NEW = '__new__';
+
+function msLineOptionsHTML(selected = '') {
+    const opts = [...msLineOptions];
+    if (selected && !opts.includes(selected)) opts.push(selected);
+    opts.sort((a, b) => a.localeCompare(b));
+    return `<option value="">— Select line —</option>` +
+        opts.map(l => `<option value="${escapeHTML(l)}"${l === selected ? ' selected' : ''}>${escapeHTML(l)}</option>`).join('') +
+        `<option value="${MS_LINE_NEW}">＋ New line…</option>`;
+}
+
+// Refresh every Line dropdown on the page, keeping what's selected
 function msFillLineDatalist(lines) {
-    const dl = document.getElementById('ms-lines');
-    if (!dl) return;
-    dl.innerHTML = lines.map(l => `<option value="${escapeHTML(l)}"></option>`).join('');
+    msLineOptions = lines;
+    document.querySelectorAll('select[name="line"]').forEach(sel => {
+        const cur = sel.value;
+        sel.innerHTML = msLineOptionsHTML(cur === MS_LINE_NEW ? '' : cur);
+        if (cur === MS_LINE_NEW) sel.value = MS_LINE_NEW;
+    });
+}
+
+// "＋ New line…" reveals a text box for typing one
+function msWireLineSelect(root) {
+    root.querySelectorAll('select[name="line"]').forEach(sel => {
+        const box = root.querySelector(`#${sel.id}-new`);
+        if (!box) return;
+        const sync = (focus) => {
+            const isNew = sel.value === MS_LINE_NEW;
+            box.hidden = !isNew;
+            if (isNew && focus) box.focus();
+        };
+        sel.addEventListener('change', () => sync(true));
+        sync(false);
+    });
 }
 
 // ------------------------------------------------------------
@@ -160,7 +191,8 @@ function msFieldsHTML(item = {}, dest = 'collection', prefix = 'f') {
         </div>
         <div class="ms-field">
             <label for="${prefix}-line">Line</label>
-            <input id="${prefix}-line" name="line" type="text" list="ms-lines" maxlength="80" value="${v('line')}" placeholder="e.g. Hot Wheels Elite" autocomplete="off">
+            <select id="${prefix}-line" name="line">${msLineOptionsHTML(item.line || '')}</select>
+            <input id="${prefix}-line-new" name="line_new" type="text" maxlength="80" placeholder="Type the new line name" autocomplete="off" hidden>
         </div>
         <div class="ms-field">
             <label for="${prefix}-set_num">Set / item #</label>
@@ -245,7 +277,7 @@ function msReadForm(form, dest) {
     const f = name => form.elements[name]?.value;
     const row = {
         name:      msText(f('name')),
-        line:      msText(f('line')),
+        line:      f('line') === MS_LINE_NEW ? msText(f('line_new')) : msText(f('line')),
         set_num:   msText(f('set_num')),
         year:      msNum(f('year'), { int: true }),
         num_parts: msNum(f('num_parts'), { int: true }),
@@ -264,6 +296,7 @@ function msReadForm(form, dest) {
 
 function msValidate(row, form) {
     if (!row.name) return ['name', 'Enter a set name'];
+    if (form.elements.line?.value === MS_LINE_NEW && !row.line) return ['line_new', 'Type a name for the new line'];
     if (row.year != null && (row.year < 1945 || row.year > 2100)) return ['year', 'Year looks off'];
     for (const k of ['num_parts', 'price_paid', 'market_value', 'retail_price']) {
         if (row[k] != null && row[k] < 0) return [k, 'Numbers can’t be negative'];
@@ -293,6 +326,7 @@ async function msInitHome() {
                 <button type="submit" class="ms-btn" id="ms-add-submit">${dest === 'collection' ? 'ADD TO COLLECTION' : 'ADD TO WISH LIST'}</button>
             </div>`;
         msWireImagePreview(form);
+        msWireLineSelect(form);
     }
 
     // Switching destination keeps whatever's already typed
@@ -642,6 +676,7 @@ function msOpenEdit(item) {
             </div>
         </form>`;
     msWireImagePreview(box);
+    msWireLineSelect(box);
     const modalImg = box.querySelector('.ms-modal-img img');
     modalImg?.addEventListener('error', () => modalImg.parentElement.remove(), { once: true });
 
