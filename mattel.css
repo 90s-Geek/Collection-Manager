@@ -290,3 +290,16 @@ body[data-partition="mattel"] .recently-added-item:hover { border-color: var(--a
     .ms-row-btns { flex-direction: column; }
     body[data-partition="mattel"] .quick-links { margin-top: 28px; }
 }
+
+/* --- Click a picture to enlarge --- */
+img.ms-item-thumb { cursor: zoom-in; transition: box-shadow var(--transition), transform var(--transition); }
+img.ms-item-thumb:hover { box-shadow: 0 0 0 2px var(--accent), 0 0 12px var(--accent-glow); }
+.ms-modal-img { cursor: zoom-in; }
+.ms-modal-img .modal-enlarge-hint { color: #666; }
+.ms-lightbox { max-width: 640px; }
+.ms-lb-img { cursor: zoom-in; }
+.ms-lb-img img { max-height: 60vh; }
+.ms-lightbox .lightbox-title { color: var(--accent); }
+.ms-lightbox .lb-val, .ms-lightbox .ms-lb-val { color: var(--accent); font-size: 1.05em; text-align: center; }
+.ms-lightbox .lightbox-img-wrap { margin-bottom: 16px; }
+.ms-lightbox::before { background: linear-gradient(90deg, transparent, var(--accent) 25%, color-mix(in srgb, var(--accent) 55%, #fff) 50%, var(--accent) 75%, transparent); }

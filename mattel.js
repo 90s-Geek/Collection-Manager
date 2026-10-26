@@ -525,6 +525,7 @@ async function msInitList() {
         if (!item) return;
         const act = e.target.closest('[data-act]')?.dataset.act;
         if (act === 'remove') msRemove(item);
+        else if (e.target.closest('img.ms-item-thumb')) msOpenLightbox(item);
         else if (act === 'move') msMoveToCollection(item);
         else if (e.target.closest('.collection-item-info')) msOpenEdit(item);
     });
@@ -658,6 +659,47 @@ function msSetView(mode) {
     msApply();
 }
 
+// --- Image lightbox (larger picture) ---
+// Uses the site's #lightbox-overlay styles; core.js closes it on Escape.
+function msOpenLightbox(item) {
+    const src = msSafeUrl(item.img_url);
+    if (!src) return;
+    let overlay = document.getElementById('lightbox-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'lightbox-overlay';
+        document.body.appendChild(overlay);
+    }
+    const stat = (val, label) => `
+        <div class="lightbox-stat">
+            <span class="lightbox-stat-val ms-lb-val">${escapeHTML(val ?? '—')}</span>
+            <span class="lightbox-stat-label">${label}</span>
+        </div>`;
+    const divider = '<div class="lightbox-stat-divider"></div>';
+    overlay.innerHTML = `
+        <div class="lightbox-box ms-lightbox" role="dialog" aria-modal="true" aria-label="${escapeHTML(item.name)}">
+            <button type="button" class="lightbox-close" aria-label="Close">✕</button>
+            <a class="lightbox-img-wrap ms-lb-img" href="${escapeHTML(src)}" target="_blank" rel="noopener" title="Open full size in a new tab">
+                <img src="${escapeHTML(src)}" alt="${escapeHTML(item.name)}">
+            </a>
+            <div class="lightbox-title">${escapeHTML(item.name)}</div>
+            <div class="lightbox-meta-row">
+                ${stat(item.line, 'LINE')}${divider}
+                ${stat(item.num_parts != null ? Number(item.num_parts).toLocaleString() : null, 'PIECES')}${divider}
+                ${stat(item.year, 'YEAR')}
+            </div>
+        </div>`;
+    overlay.onclick = e => {
+        if (e.target === overlay || e.target.closest('.lightbox-close')) overlay.classList.remove('active');
+    };
+    const img = overlay.querySelector('.ms-lb-img img');
+    img.addEventListener('error', () => {
+        img.parentElement.outerHTML = '<div class="lightbox-img-wrap"><span class="ms-item-thumb--none" style="width:100%;height:180px;">IMAGE WON’T LOAD</span></div>';
+    }, { once: true });
+    overlay.classList.add('active');
+    overlay.querySelector('.lightbox-close').focus();
+}
+
 // --- Edit modal ---
 function msOpenEdit(item) {
     const overlay = document.getElementById('ms-modal');
@@ -666,7 +708,7 @@ function msOpenEdit(item) {
     box.innerHTML = `
         <button type="button" class="modal-close" data-act="close" aria-label="Close">✕</button>
         <h2>${escapeHTML(item.name)}</h2>
-        ${img ? `<div class="ms-modal-img"><img src="${escapeHTML(img)}" alt=""></div>` : ''}
+        ${img ? `<div class="ms-modal-img" data-act="enlarge" title="Click to enlarge"><img src="${escapeHTML(img)}" alt=""><div class="modal-enlarge-hint">🔍 click to enlarge</div></div>` : ''}
         <form class="ms-form" id="ms-edit-form" data-dest="${MS_LIST}" novalidate>
             ${msFieldsHTML(item, MS_LIST, 'edit')}
             <div class="ms-actions">
@@ -705,6 +747,7 @@ function msOpenEdit(item) {
     box.onclick = e => {
         const act = e.target.closest('[data-act]')?.dataset.act;
         if (act === 'close') overlay.classList.remove('active');
+        else if (act === 'enlarge') msOpenLightbox(item);
         else if (act === 'delete') msRemove(item);
         else if (act === 'move') msMoveToCollection(item);
     };
