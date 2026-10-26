@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>if (sessionStorage.getItem('90sgeek_auth') !== 'true') window.location.replace('login.html');</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="90s Geek — add Mattel Brick Shop sets to your collection or wish list.">
+    <link rel="icon" type="image/webp" href="images/90s_Geek_logo.webp">
+    <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <meta name="theme-color" content="#050805">
+    <meta name="apple-mobile-web-app-title" content="90s Geek">
+    <title>90s Geek — Mattel Brick Shop</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+    <link rel="stylesheet" href="styles.css?v=14">
+    <link rel="stylesheet" href="mattel.css?v=1">
+    <script defer src="/_vercel/speed-insights/script.js"></script>
+</head>
+<body data-partition="mattel" data-page="mattel-home">
+    <div class="sidebar-panel"></div>
+    <div class="right-panel"></div>
+    <a href="mattel.html"><img src="images/90s_Geek_logo.webp" alt="90s Geek Logo" class="logo"></a>
+
+    <div class="recently-added-panel">
+        <span class="recently-added-title">RECENTLY ADDED</span>
+        <div id="last-added-container">
+            <div class="recently-added-skeleton-item">
+                <div class="skeleton skeleton-thumb"></div>
+                <div class="skeleton-lines">
+                    <div class="skeleton skeleton-text medium"></div>
+                    <div class="skeleton skeleton-text short"></div>
+                </div>
+            </div>
+            <div class="recently-added-skeleton-item">
+                <div class="skeleton skeleton-thumb"></div>
+                <div class="skeleton-lines">
+                    <div class="skeleton skeleton-text medium"></div>
+                    <div class="skeleton skeleton-text short"></div>
+                </div>
+            </div>
+            <div class="recently-added-skeleton-item">
+                <div class="skeleton skeleton-thumb"></div>
+                <div class="skeleton-lines">
+                    <div class="skeleton skeleton-text medium"></div>
+                    <div class="skeleton skeleton-text short"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav">
+        <a href="mattel-collection.html">COLLECTION</a>
+        <a href="mattel-wantlist.html">WISH LIST</a>
+    </div>
+    <div id="toast-container"></div>
+
+    <div class="partition-tag">Mattel Brick Shop</div>
+    <h1>Add a Set</h1>
+
+    <div class="stats-strip ms-stats" id="ms-stats">
+        <div class="stats-tile stats-tile--loading"><div class="skeleton stats-tile-skel-val"></div><div class="skeleton skeleton-text short"></div></div>
+        <div class="stats-tile stats-tile--loading"><div class="skeleton stats-tile-skel-val"></div><div class="skeleton skeleton-text short"></div></div>
+        <div class="stats-tile stats-tile--loading"><div class="skeleton stats-tile-skel-val"></div><div class="skeleton skeleton-text short"></div></div>
+        <div class="stats-tile stats-tile--loading"><div class="skeleton stats-tile-skel-val"></div><div class="skeleton skeleton-text short"></div></div>
+    </div>
+
+    <section class="ms-panel" aria-labelledby="ms-add-title">
+        <div class="ms-panel-head"><span id="ms-add-title">⊕ New set</span><span style="color:var(--text-muted);letter-spacing:1px;">manual entry</span></div>
+        <div class="ms-panel-body">
+            <form class="ms-form" id="ms-add-form" novalidate></form>
+        </div>
+    </section>
+
+    <datalist id="ms-lines"></datalist>
+    <nav class="quick-links"></nav>
+
+    <script src="pull-refresh.js?v=1"></script>
+    <script src="core.js?v=1"></script>
+    <script src="mattel.js?v=1"></script>
+</body>
+</html>

@@ -139,10 +139,32 @@ async function signOut() {
     goToLogin();
 }
 
-// Adds a LOG OUT link to the right end of the top nav on every page
+// --- Partitions (LEGO / Mattel Brick Shop) ---
+// Pages declare theirs with <body data-partition="...">; no attribute = LEGO.
+const PARTITION = document.body.dataset.partition || 'lego';
+// Lets the picker (select.html) mark whichever side you were last in
+try { localStorage.setItem('90sgeek_partition', PARTITION); } catch {}
+
+// Adds a SWITCH link (back to the partition picker) and a LOG OUT link
+// to the right end of the top nav on every page
 function renderLogoutLink() {
     const nav = document.querySelector('.nav');
     if (!nav || nav.querySelector('.nav-logout')) return;
+
+    if (!nav.querySelector('.nav-switch')) {
+        const sw = document.createElement('a');
+        sw.href = 'select.html';
+        sw.className = 'nav-switch';
+        sw.textContent = '⇄ SWITCH';
+        sw.title = 'Switch between LEGO and Mattel Brick Shop';
+        sw.addEventListener('click', e => {
+            e.preventDefault();
+            document.body.classList.add('page-fade-out');
+            setTimeout(() => { window.location.href = 'select.html'; }, 150);
+        });
+        nav.appendChild(sw);
+    }
+
     const a = document.createElement('a');
     a.href = 'login.html';
     a.className = 'nav-logout';
@@ -235,11 +257,19 @@ const QUICK_LINKS = [
     { label: 'BrickEconomy', url: 'https://www.brickeconomy.com' },
 ];
 
+const MATTEL_QUICK_LINKS = [
+    { label: 'eBay',            url: 'https://www.ebay.com/sch/i.html?_nkw=mattel+brick+shop' },
+    { label: 'Mattel Creations', url: 'https://creations.mattel.com' },
+    { label: 'Mattel Shop',     url: 'https://shop.mattel.com' },
+    { label: 'Amazon',          url: 'https://www.amazon.com/s?k=mattel+brick+shop' },
+];
+
 function renderQuickLinks() {
     const nav = document.querySelector('.quick-links');
     if (!nav) return;
+    const links = PARTITION === 'mattel' ? MATTEL_QUICK_LINKS : QUICK_LINKS;
     nav.innerHTML = '<span class="quick-links-title">LINKS</span>' +
-        QUICK_LINKS.map(link =>
+        links.map(link =>
             `<a href="${link.url}" target="_blank" rel="noopener">${link.label}</a>`
         ).join('');
 }
@@ -521,6 +551,8 @@ window.onload = async () => {
     restoreControlsState();
     // Don't load any data until the Supabase session is confirmed
     if (!(await authReady)) return;
+    // Mattel Brick Shop pages load their own data (mattel.js)
+    if (PARTITION !== 'lego') return;
     // Check if the dashboard container exists (index.html)
     if (document.getElementById('last-added-container')) {
         loadLastAdded();

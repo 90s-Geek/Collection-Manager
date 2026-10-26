@@ -292,7 +292,7 @@
     <div class="logo-area">
         <img src="images/90s_Geek_logo.webp" alt="90s Geek Logo">
         <h1>90's Geek</h1>
-        <p>Lego Collection Manager</p>
+        <p>Brick Collection Manager</p>
     </div>
 
     <div class="terminal-box">
@@ -338,6 +338,9 @@
     // session on every page and sends you back here if it's missing.
     const AUTH_FLAG = '90sgeek_auth';
 
+    // After login you land on the partition picker (LEGO / Mattel Brick Shop)
+    const AFTER_LOGIN = 'select.html';
+
     const form     = document.getElementById('login-form');
     const emailEl  = document.getElementById('email-input');
     const passEl   = document.getElementById('password-input');
@@ -357,7 +360,7 @@
 
     function enterSite() {
         try { sessionStorage.setItem(AUTH_FLAG, 'true'); } catch {}
-        window.location.replace('index.html');
+        window.location.replace(AFTER_LOGIN);
     }
 
     function showError(text) {
@@ -372,7 +375,7 @@
         errMsg.textContent = '';
     }
 
-    // Already signed in (e.g. a new tab)? Skip straight to the site.
+    // Already signed in (e.g. a new tab)? Skip straight to the picker.
     // Otherwise make sure no stale flag is left behind.
     if (db) {
         db.auth.getSession().then(({ data }) => {

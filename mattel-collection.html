@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>if (sessionStorage.getItem('90sgeek_auth') !== 'true') window.location.replace('login.html');</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="90s Geek — your Mattel Brick Shop collection.">
+    <link rel="icon" type="image/webp" href="images/90s_Geek_logo.webp">
+    <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <meta name="theme-color" content="#050805">
+    <meta name="apple-mobile-web-app-title" content="90s Geek">
+    <title>Mattel Brick Shop — Collection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+    <link rel="stylesheet" href="styles.css?v=14">
+    <link rel="stylesheet" href="mattel.css?v=1">
+    <script defer src="/_vercel/speed-insights/script.js"></script>
+</head>
+<body data-partition="mattel" data-page="mattel-collection">
+    <div class="sidebar-panel"></div>
+    <a href="mattel.html"><img src="images/90s_Geek_logo.webp" alt="90s Geek Logo" class="logo"></a>
+
+    <div class="nav">
+        <a href="mattel.html">ADD SET</a>
+        <a href="mattel-wantlist.html">WISH LIST</a>
+    </div>
+    <div id="toast-container"></div>
+
+    <div class="partition-tag">Mattel Brick Shop</div>
+    <h1>Collection</h1>
+
+    <button class="export-btn" id="ms-export">DOWNLOAD CSV (EXCEL)</button>
+    <a class="import-btn" href="mattel.html" style="display:block;text-align:center;text-decoration:none;">＋ ADD A SET</a>
+
+    <div class="controls-panel">
+        <div class="controls-panel-title" id="controls-toggle" onclick="toggleControls()" aria-expanded="true" aria-controls="controls-body" role="button" tabindex="0">
+            &gt; SORT &amp; FILTER <span class="controls-panel-toggle">▲</span>
+        </div>
+        <div class="controls-panel-body" id="controls-body">
+            <div class="control-row">
+                <label for="ms-sort">Sort By:</label>
+                <select id="ms-sort">
+                    <option value="created_at|desc">Date Added (Newest First)</option>
+                    <option value="created_at|asc">Date Added (Oldest First)</option>
+                    <option value="name|asc">Name (A → Z)</option>
+                    <option value="name|desc">Name (Z → A)</option>
+                    <option value="year|desc">Year (Newest First)</option>
+                    <option value="year|asc">Year (Oldest First)</option>
+                    <option value="line|asc">Line (A → Z)</option>
+                    <option value="market_value|desc">Market Value (High → Low)</option>
+                    <option value="price_paid|desc">Price Paid (High → Low)</option>
+                    <option value="condition|asc">Condition (A → Z)</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label for="ms-filter-line">Line:</label>
+                <select id="ms-filter-line"><option value="">All Lines</option></select>
+            </div>
+            <div class="control-row">
+                <label for="ms-filter-year">Year:</label>
+                <select id="ms-filter-year"><option value="">All Years</option></select>
+            </div>
+            <div class="control-row">
+                <label for="ms-filter-condition">Condition:</label>
+                <select id="ms-filter-condition"><option value="">All Conditions</option></select>
+            </div>
+            <div class="control-row">
+                <label for="ms-filter-name">Search:</label>
+                <input type="text" id="ms-filter-name" placeholder="Name, line, set # or notes...">
+            </div>
+            <button type="button" class="clear-filters-btn" id="ms-clear-filters">✕ CLEAR FILTERS</button>
+        </div>
+    </div>
+
+    <div class="collection-meta-row">
+        <div class="collection-count" id="collection-count"></div>
+        <div class="view-toggle">
+            <button id="btn-list" class="active" title="List view">☰</button>
+            <button id="btn-grid" title="Grid view">⊞</button>
+        </div>
+    </div>
+
+    <ul id="collection-list">
+        <li class="list-empty-msg">Loading…</li>
+    </ul>
+
+    <div class="modal-overlay" id="ms-modal">
+        <div class="modal-box" role="dialog" aria-modal="true"></div>
+    </div>
+
+    <datalist id="ms-lines"></datalist>
+    <nav class="quick-links"></nav>
+
+    <script src="pull-refresh.js?v=1"></script>
+    <script src="core.js?v=1"></script>
+    <script src="mattel.js?v=1"></script>
+
+    <!-- Scroll to top -->
+    <button id="scroll-top-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">▲</button>
+    <script>
+        (function() {
+            var btn = document.getElementById('scroll-top-btn');
+            window.addEventListener('scroll', function() {
+                btn.classList.toggle('visible', window.scrollY > 400);
+            }, { passive: true });
+        })();
+    </script>
+</body>
+</html>

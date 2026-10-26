@@ -2270,3 +2270,34 @@ a.stats-tile:focus-visible { outline: 2px solid var(--tile-color); outline-offse
     .sotd-signal-screen span,
     .sotd-signal-cursor { animation: none; }
 }
+
+/* --- Top nav: SWITCH link back to the partition picker (added by core.js) --- */
+.nav a.nav-switch {
+    margin-left: auto;
+    color: var(--text-dim);
+}
+.nav a.nav-switch + a.nav-logout { margin-left: 0; }
+.nav a.nav-switch::after { background: var(--cyan); box-shadow: 0 0 8px rgba(0,229,255,0.35); }
+.nav a.nav-switch:hover {
+    color: var(--cyan);
+    background: rgba(0,229,255,0.07);
+    text-shadow: 0 0 8px rgba(0,229,255,0.35);
+}
+@media (max-width: 600px) {
+    /* SWITCH and LOG OUT share the last row of the phone nav grid */
+    .nav a.nav-switch,
+    .nav a.nav-switch + a.nav-logout {
+        grid-column: auto;
+        margin-left: 0;
+        padding: 8px;
+        font-size: 0.68em;
+        color: var(--text-dim);
+        background: transparent;
+        border-color: var(--border);
+    }
+    .nav a.nav-switch:hover {
+        color: var(--cyan);
+        border-color: rgba(0,229,255,0.5);
+        background: rgba(0,229,255,0.06);
+    }
+}

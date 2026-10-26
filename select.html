@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>if (sessionStorage.getItem('90sgeek_auth') !== 'true') window.location.replace('login.html');</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>90s Geek — Select Partition</title>
+    <link rel="icon" type="image/webp" href="images/90s_Geek_logo.webp">
+    <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <meta name="theme-color" content="#050805">
+    <meta name="apple-mobile-web-app-title" content="90s Geek">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+    <style>
+        :root {
+            --green:      #39e880;
+            --green-dim:  #28c96a;
+            --green-glow: rgba(57, 232, 128, 0.15);
+            --cyan:       #00e5ff;
+            --amber:      #ffb730;
+            --orange:     #ff7a3d;
+            --magenta:    #ff4dff;
+            --red:        #ff4466;
+            --bg:         #050805;
+            --surface:    #0e1610;
+            --surface2:   #131d14;
+            --border:     #243428;
+            --border2:    #2c3e2e;
+            --text:       #cce8d0;
+            --text-dim:   #6b8a72;
+            --text-muted: #3d5442;
+            --mono:       'JetBrains Mono', 'Courier New', monospace;
+            --sans:       'Space Grotesk', sans-serif;
+            --radius:     10px;
+            --radius-sm:  6px;
+            --radius-lg:  16px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            min-height: 100%;
+            background-color: var(--bg);
+            background-image:
+                linear-gradient(rgba(57, 232, 128, 0.018) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(57, 232, 128, 0.018) 1px, transparent 1px),
+                radial-gradient(ellipse at 50% 0%, rgba(57, 232, 128, 0.04) 0%, transparent 55%),
+                linear-gradient(160deg, #060d06 0%, #0a120a 50%, #080e08 100%);
+            background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%;
+            background-attachment: fixed;
+            color: var(--text);
+            font-family: var(--sans);
+        }
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            transition: opacity 0.15s ease;
+        }
+        body.page-fade-out { opacity: 0; }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(0,0,0,0.45) 100%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .select-wrap {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 640px;
+            padding: 32px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 28px;
+        }
+
+        .logo-area { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+        .logo-area img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 3px solid var(--green-dim);
+            box-shadow: 0 0 30px var(--green-glow), 0 0 60px var(--green-glow);
+        }
+        .logo-area h1 {
+            font-family: var(--mono);
+            color: var(--green);
+            font-size: 1.1em;
+            font-weight: 700;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        .terminal-box {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(57, 232, 128, 0.06), 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .terminal-bar {
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dot-red    { background: #ff5f57; }
+        .dot-yellow { background: #febc2e; }
+        .dot-green  { background: #28c840; }
+        .terminal-title {
+            font-family: var(--mono);
+            font-size: 0.7em;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-left: 6px;
+        }
+
+        .terminal-body { padding: 26px 26px 28px; display: flex; flex-direction: column; gap: 20px; }
+
+        .prompt-line { font-family: var(--mono); font-size: 0.78em; color: var(--text-dim); letter-spacing: 1px; line-height: 1.7; }
+        .prompt-line span { color: var(--green); }
+        .prompt-line .who { color: var(--cyan); }
+
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 1em;
+            background: var(--green);
+            vertical-align: text-bottom;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .partitions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+        .partition {
+            --p-color: var(--green);
+            --p-glow:  rgba(57, 232, 128, 0.12);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 20px 18px 18px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            color: var(--text);
+            text-decoration: none;
+            text-align: left;
+            font: inherit;
+            cursor: pointer;
+            overflow: hidden;
+            transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition), background var(--transition);
+        }
+        .partition::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--p-color) 25%, var(--p-color) 75%, transparent);
+            opacity: 0.45;
+            transition: opacity var(--transition);
+        }
+        .partition--mattel { --p-color: var(--orange); --p-glow: rgba(255, 122, 61, 0.12); }
+
+        .partition:hover:not(.is-offline),
+        .partition:focus-visible {
+            border-color: var(--p-color);
+            background: var(--p-glow);
+            box-shadow: 0 0 22px var(--p-glow);
+            transform: translateY(-2px);
+            outline: none;
+        }
+        .partition:hover::before,
+        .partition:focus-visible::before { opacity: 1; }
+
+        .partition-key {
+            font-family: var(--mono);
+            font-size: 0.64em;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+        }
+        .partition-key b { color: var(--p-color); font-weight: 700; }
+        .partition-name {
+            font-family: var(--mono);
+            font-size: 1.05em;
+            font-weight: 700;
+            color: var(--p-color);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            line-height: 1.3;
+        }
+        .partition-desc { font-size: 0.82em; color: var(--text-dim); line-height: 1.5; }
+        .partition-path {
+            margin-top: auto;
+            font-family: var(--mono);
+            font-size: 0.66em;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+
+        .last-tag {
+            position: absolute;
+            top: 12px; right: 12px;
+            font-family: var(--mono);
+            font-size: 0.56em;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--p-color);
+            border: 1px solid var(--p-color);
+            border-radius: 50px;
+            padding: 2px 8px;
+            opacity: 0.8;
+        }
+
+        .partition.is-offline { cursor: not-allowed; opacity: 0.55; }
+        .offline-tag {
+            align-self: flex-start;
+            font-family: var(--mono);
+            font-size: 0.6em;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: var(--text-dim);
+            border: 1px dashed var(--border2);
+            border-radius: 4px;
+            padding: 2px 8px;
+        }
+
+        .footer-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--mono);
+            font-size: 0.68em;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid var(--border2);
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            font-family: var(--mono);
+            font-size: 1em;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: color var(--transition), border-color var(--transition), background var(--transition);
+        }
+        .logout-btn:hover { color: var(--red); border-color: rgba(255,68,102,0.5); background: rgba(255,68,102,0.06); }
+        .logout-btn:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+        @media (max-width: 560px) {
+            .partitions { grid-template-columns: 1fr; }
+            .terminal-body { padding: 20px 16px 22px; }
+            .footer-row { flex-direction: column-reverse; align-items: stretch; text-align: center; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .cursor { animation: none; }
+            .partition { transition: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="select-wrap">
+    <div class="logo-area">
+        <img src="images/90s_Geek_logo.webp" alt="90s Geek Logo">
+        <h1>90's Geek</h1>
+    </div>
+
+    <div class="terminal-box">
+        <div class="terminal-bar">
+            <div class="dot dot-red"></div>
+            <div class="dot dot-yellow"></div>
+            <div class="dot dot-green"></div>
+            <span class="terminal-title">mount_partition.sh</span>
+        </div>
+        <div class="terminal-body">
+            <div class="prompt-line">
+                <span>$</span> whoami → <span class="who" id="who">…</span><br>
+                <span>$</span> ./mount --select-partition <span class="cursor"></span>
+            </div>
+
+            <div class="partitions" id="partitions"></div>
+
+            <div class="footer-row">
+                <span>Press <b style="color:var(--text-dim)">1</b> or <b style="color:var(--text-dim)">2</b> to select</span>
+                <button type="button" class="logout-btn" id="logout-btn">LOG OUT</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // -------------------------------------------------------
+    // Partition picker — first stop after login.
+    // To add or bring a partition online, edit PARTITIONS:
+    //   href: null  → shown as OFFLINE (not clickable)
+    //   href: 'x'   → the page to open for that partition
+    // -------------------------------------------------------
+    const PARTITIONS = [
+        {
+            id: 'lego',
+            key: '1',
+            name: 'LEGO',
+            desc: 'Collection, wish list, stats and news for LEGO sets.',
+            href: 'index.html',
+            cls: ''
+        },
+        {
+            id: 'mattel',
+            key: '2',
+            name: 'Mattel Brick Shop',
+            desc: 'Collection and wish list for Mattel Brick Shop sets — Hot Wheels builds and more.',
+            href: 'mattel.html',
+            cls: 'partition--mattel'
+        }
+    ];
+
+    const SUPABASE_URL = 'https://sgmibyooymrocvojchxu.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnbWlieW9veW1yb2N2b2pjaHh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1Mzk0OTYsImV4cCI6MjA4NzExNTQ5Nn0.nLXsVr6mvsCQJijHsO2wkw49e0J4JZ-2oiLTpKZGmu0';
+    const AUTH_FLAG = '90sgeek_auth';
+    const LAST_KEY  = '90sgeek_partition'; // remembers the last partition opened
+
+    function goToLogin() {
+        try { sessionStorage.removeItem(AUTH_FLAG); } catch {}
+        window.location.replace('login.html');
+    }
+
+    // Same session settings as login.html / core.js (sessionStorage, per tab)
+    let db = null;
+    try {
+        db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true } });
+    } catch {
+        goToLogin();
+    }
+
+    // Real check: the per-tab flag only gates the redirect in <head>
+    if (db) {
+        db.auth.getSession()
+            .then(({ data }) => {
+                if (!data?.session) { goToLogin(); return; }
+                document.getElementById('who').textContent = data.session.user?.email || 'user';
+            })
+            .catch(goToLogin);
+        db.auth.onAuthStateChange(event => { if (event === 'SIGNED_OUT') goToLogin(); });
+    }
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        try { await db?.auth.signOut(); } catch {}
+        goToLogin();
+    });
+
+    let last = null;
+    try { last = localStorage.getItem(LAST_KEY); } catch {}
+
+    function escapeHTML(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function renderPartitions() {
+        const wrap = document.getElementById('partitions');
+        wrap.innerHTML = PARTITIONS.map(p => {
+            const online = !!p.href;
+            const tag  = online ? 'a' : 'div';
+            const attrs = online
+                ? `href="${escapeHTML(p.href)}" data-partition="${p.id}"`
+                : `aria-disabled="true" title="Not built yet"`;
+            return `
+                <${tag} class="partition ${p.cls}${online ? '' : ' is-offline'}" ${attrs}>
+                    ${online && last === p.id ? '<span class="last-tag">LAST USED</span>' : ''}
+                    <span class="partition-key">[ <b>${p.key}</b> ]</span>
+                    <span class="partition-name">${escapeHTML(p.name)}</span>
+                    <span class="partition-desc">${escapeHTML(p.desc)}</span>
+                    ${online
+                        ? `<span class="partition-path">→ /${escapeHTML(p.href)}</span>`
+                        : '<span class="offline-tag">OFFLINE — COMING SOON</span>'}
+                </${tag}>`;
+        }).join('');
+
+        wrap.querySelectorAll('a.partition').forEach(a => {
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                openPartition(PARTITIONS.find(p => p.id === a.dataset.partition));
+            });
+        });
+
+        // Keyboard users land on the last-used partition
+        const focusTarget = wrap.querySelector(`a[data-partition="${last}"]`) || wrap.querySelector('a.partition');
+        focusTarget?.focus({ preventScroll: true });
+    }
+
+    function openPartition(p) {
+        if (!p || !p.href) return;
+        try { localStorage.setItem(LAST_KEY, p.id); } catch {}
+        document.body.classList.add('page-fade-out');
+        setTimeout(() => { window.location.href = p.href; }, 150);
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        const p = PARTITIONS.find(x => x.key === e.key);
+        if (p) openPartition(p);
+    });
+
+    renderPartitions();
+</script>
+
+</body>
+</html>
